@@ -199,8 +199,8 @@ void arm_bl2_dyn_cfg_init(void)
 			HW_CONFIG_ID,
 			SOC_FW_CONFIG_ID,
 			NT_FW_CONFIG_ID,
-#ifdef SPD_tspd
-			/* Currently tos_fw_config is only present for TSP */
+#if defined(SPD_tspd) || ENABLE_SPMD
+			/* Currently tos_fw_config is only present for TSP and SPMD */
 			TOS_FW_CONFIG_ID
 #endif
 	};
