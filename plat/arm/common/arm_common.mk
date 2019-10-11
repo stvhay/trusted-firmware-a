@@ -248,6 +248,17 @@ BL31_SOURCES		+=	common/fdt_wrappers.c			\
 endif
 endif
 
+ifeq (${ENABLE_SPMD},1)
+    ifeq (${ENABLE_SPM},1)
+        $(error "ENABLE_SPMD must be enabled only when ENABLE_SPM is not enabled")
+    endif
+
+BL31_SOURCES		+=	plat/common/plat_spmd_manifest.c	\
+				common/fdt_wrappers.c			\
+				${LIBFDT_SRCS}
+
+endif
+
 ifneq (${TRUSTED_BOARD_BOOT},0)
 
     # Include common TBB sources

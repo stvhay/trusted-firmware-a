@@ -20,6 +20,14 @@ ifeq (${ENABLE_SPM},1)
   endif
 endif
 
+################################################################################
+# Include SPMD Makefile
+################################################################################
+ifeq (${ENABLE_SPMD},1)
+  $(info Including SPMD makefile)
+  include services/std_svc/spmd/spmd.mk
+endif
+
 
 include lib/psci/psci_lib.mk
 
@@ -36,6 +44,7 @@ BL31_SOURCES		+=	bl31/bl31_main.c				\
 				services/arm_arch_svc/arm_arch_svc_setup.c	\
 				services/std_svc/std_svc_setup.c		\
 				${PSCI_LIB_SOURCES}				\
+				${SPMD_SOURCES}					\
 				${SPM_SOURCES}
 
 
