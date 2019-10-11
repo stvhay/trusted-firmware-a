@@ -103,7 +103,7 @@
 #define is_arm_arch_svc_call(_fid)	(GET_SMC_OEN(_fid) == OEN_ARM_START)
 
 /* The macro below is used to identify a valid Fast SMC call */
-#define is_valid_fast_smc(_fid)		((!(((_fid) >> 16) & U(0xff))) && \
+#define is_valid_fast_smc(_fid)		((!(((_fid) >> 16) & U(0xffff))) && \
 					   (GET_SMC_TYPE(_fid) == SMC_TYPE_FAST))
 
 /*
