@@ -42,6 +42,15 @@ static spmc_manifest_attribute_t spmc_attrs;
 static entry_point_info_t *spmc_ep_info;
 
 /*******************************************************************************
+ * SPM Core entry point information get helper.
+ ******************************************************************************/
+entry_point_info_t *spmd_spmc_ep_info_get(void)
+
+{
+	return spmc_ep_info;
+}
+
+/*******************************************************************************
  * SPM Core context on current CPU get helper.
  ******************************************************************************/
 spmd_spm_core_context_t *spmd_get_context(void)

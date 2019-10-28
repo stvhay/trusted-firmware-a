@@ -68,6 +68,9 @@ void __dead2 spmd_spm_core_exit(uint64_t c_rt_ctx, uint64_t ret);
 /* SPMC context on current CPU get helper */
 spmd_spm_core_context_t *spmd_get_context(void);
 
+/* SPMC entry point information helper */
+entry_point_info_t *spmd_spmc_ep_info_get(void);
+
 #endif /* __ASSEMBLER__ */
 
 #endif /* SPMD_PRIVATE_H */
