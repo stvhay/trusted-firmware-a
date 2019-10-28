@@ -132,19 +132,29 @@ __dead2 void spmd_spm_core_sync_exit(uint64_t rc)
  ******************************************************************************/
 static int32_t spmd_init(void)
 {
-	spmd_spm_core_context_t *ctx = spmd_get_context();
+	unsigned int linear_id = plat_my_core_pos();
+	spmd_spm_core_context_t *spm_ctx = &spm_core_context[linear_id];
+	uint32_t core_id = 0;
 	uint64_t rc;
 
 	VERBOSE("SPM Core init start.\n");
-	ctx->state = SPMC_STATE_RESET;
+	spm_ctx->state = AFF_STATE_ON_PENDING;
 
-	rc = spmd_spm_core_sync_entry(ctx);
+	/* Set the SPMC context state on other CPUs to OFF */
+	for (core_id = 0; core_id < PLATFORM_CORE_COUNT; core_id++) {
+		if (core_id != linear_id) {
+			spm_core_context[core_id].state = AFF_STATE_OFF;
+		}
+	}
+
+
+	rc = spmd_spm_core_sync_entry(spm_ctx);
 	if (rc != 0ULL) {
 		ERROR("SPMC initialisation failed 0x%llx\n", rc);
 		return 0;
 	}
 
-	ctx->state = SPMC_STATE_IDLE;
+	spm_ctx->state = SPMC_STATE_IDLE;
 	VERBOSE("SPM Core init end.\n");
 
 	return 1;
@@ -375,7 +385,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		 * this CPU. If so, then indicate that the SPM Core initialised
 		 * unsuccessfully.
 		 */
-		if (secure_origin && (ctx->state == SPMC_STATE_RESET)) {
+		if (secure_origin && (ctx->state == AFF_STATE_ON_PENDING)) {
 			spmd_spm_core_sync_exit(x2);
 		}
 
@@ -499,7 +509,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		 * this CPU from the Secure world. If so, then indicate that the
 		 * SPM Core initialised successfully.
 		 */
-		if (secure_origin && (ctx->state == SPMC_STATE_RESET)) {
+		if (secure_origin && (ctx->state == AFF_STATE_ON_PENDING)) {
 			spmd_spm_core_sync_exit(0);
 		}
 
