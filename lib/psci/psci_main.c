@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -384,8 +384,28 @@ u_register_t psci_smc_handler(uint32_t smc_fid,
 {
 	u_register_t ret;
 
-	if (is_caller_secure(flags))
-		return (u_register_t)SMC_UNK;
+#if defined(SPD_spmd)
+
+	/*
+	 * Call PSCI secure SMC handler registered by the SPMD if one exists.
+	 */
+	if (is_caller_secure(flags)) {
+		u_register_t psci_ret = SMC_UNK;
+
+		if ((psci_spd_pm != NULL) &&
+		    (psci_spd_pm->psci_sec_smc_handler != NULL)) {
+			psci_ret = psci_spd_pm->psci_sec_smc_handler(smc_fid,
+								     x1, x2,
+								     x3, x4,
+								     cookie,
+								     handle,
+								     flags);
+		}
+
+		return psci_ret;
+	}
+
+#endif /* defined(SPD_spmd) */
 
 	/* Check the fid against the capabilities */
 	if ((psci_caps & define_psci_cap(smc_fid)) == 0U)
