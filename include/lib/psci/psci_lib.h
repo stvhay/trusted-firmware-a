@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -19,8 +19,17 @@
  * chance to perform any bookkeeping before PSCI executes a power management
  * operation. It also allows PSCI to determine certain properties of the SP e.g.
  * migrate capability etc.
+ * The psci_sec_smc_handler() is exported by a dispatcher to handle PSCI calls
+ * that originate from the Secure world. These calls do not result in any
+ * physical power state transitions. They should be used by SPs to ensure that
+ * their run time state is not disrupted by any physical power state transitions
+ * initiated by the Normal world.
  ******************************************************************************/
 typedef struct spd_pm_ops {
+	uint64_t (*psci_sec_smc_handler)(uint32_t smc_fid, uint64_t x1,
+					 uint64_t x2, uint64_t x3,
+					 uint64_t x4, void *cookie,
+					 void *handle, uint64_t flags);
 	void (*svc_on)(u_register_t target_cpu);
 	int32_t (*svc_off)(u_register_t __unused unused);
 	void (*svc_suspend)(u_register_t max_off_pwrlvl);

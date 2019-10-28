@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -330,6 +330,9 @@ typedef struct plat_psci_ops {
 /*******************************************************************************
  * Function & Data prototypes
  ******************************************************************************/
+int psci_validate_power_state(unsigned int power_state,
+			      psci_power_state_t *state_info);
+int psci_validate_mpidr(u_register_t mpidr);
 unsigned int psci_version(void);
 int psci_cpu_on(u_register_t target_cpu,
 		uintptr_t entrypoint,
