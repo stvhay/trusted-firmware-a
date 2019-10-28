@@ -30,6 +30,9 @@
 #define SPMD_C_RT_CTX_ENTRIES		(SPMD_C_RT_CTX_SIZE >> DWORD_SHIFT)
 
 #ifndef __ASSEMBLY__
+#include <lib/psci/psci.h>
+#include <lib/spinlock.h>
+#include <lib/utils.h>
 #include <services/spci_beta0.h>
 #include <stdint.h>
 
@@ -39,11 +42,6 @@
  */
 #define SPCI_FNO_TO_BIT_POS(_fid)	(1 << ((_fid) & U(0x1f)))
 
-typedef enum spmc_state {
-	SPMC_STATE_RESET = 0,
-	SPMC_STATE_IDLE
-} spmc_state_t;
-
 /*
  * Data structure used by the SPM dispatcher (SPMD) in EL3 to track context of
  * the SPM core (SPMC) at the next lower EL.
@@ -51,7 +49,8 @@ typedef enum spmc_state {
 typedef struct spmd_spm_core_context {
 	uint64_t c_rt_ctx;
 	cpu_context_t cpu_ctx;
-	spmc_state_t state;
+	aff_info_state_t state;
+	spinlock_t lock;
 } spmd_spm_core_context_t;
 
 /*

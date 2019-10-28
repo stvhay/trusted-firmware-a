@@ -97,10 +97,18 @@ __dead2 void spmd_spm_core_sync_exit(uint64_t rc)
 static int32_t spmd_init(void)
 {
 	uint64_t rc = 0;
+	uint32_t cnt = 0;
 	spmd_spm_core_context_t *ctx = &spm_core_context[plat_my_core_pos()];
 
 	INFO("SPM Core init start.\n");
-	ctx->state = SPMC_STATE_RESET;
+	ctx->state = AFF_STATE_ON_PENDING;
+
+	/* Set the state of SPMC contexts on other cpus to OFF */
+	for (cnt = 0; cnt < PLATFORM_CORE_COUNT; cnt++) {
+		if (spm_core_context[cnt].state == AFF_STATE_ON_PENDING)
+			continue;
+		spm_core_context[cnt].state = AFF_STATE_OFF;
+	}
 
 	rc = spmd_spm_core_sync_entry(ctx);
 	if (rc) {
@@ -108,7 +116,8 @@ static int32_t spmd_init(void)
 		panic();
 	}
 
-	ctx->state = SPMC_STATE_IDLE;
+	ctx->state = AFF_STATE_ON;
+
 	INFO("SPM Core init end.\n");
 
 	return 1;
@@ -262,6 +271,9 @@ int32_t spmd_setup(void)
 	cm_setup_context(&(spm_core_context[plat_my_core_pos()].cpu_ctx),
 			 spmc_ep_info);
 
+	/* Reuse PSCI affinity states to mark this SPMC context as off */
+	spm_core_context[plat_my_core_pos()].state = AFF_STATE_OFF;
+
 	INFO("SPM core setup done.\n");
 
 	/* Register init function for deferred init.  */
@@ -300,12 +312,6 @@ uint64_t spmd_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2,
 	in_sstate = is_caller_non_secure(flags);
 	out_sstate = !in_sstate;
 
-	INFO("SPM: 0x%x, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx \n",
-	     smc_fid, x1, x2, x3, x4, SMC_GET_GP(handle, CTX_GPREG_X5),
-	     SMC_GET_GP(handle, CTX_GPREG_X6),
-	     SMC_GET_GP(handle, CTX_GPREG_X7));
-
-
 	switch (smc_fid) {
 	case SPCI_ERROR:
 		/*
@@ -313,7 +319,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2,
 		 * this CPU. If so, then indicate that the SPM core initialised
 		 * unsuccessfully.
 		 */
-		if ((in_sstate == SECURE) && (ctx->state == SPMC_STATE_RESET))
+		if ((in_sstate == SECURE) &&
+		    (ctx->state == AFF_STATE_ON_PENDING))
 			spmd_spm_core_sync_exit(x2);
 
 		/* Save incoming security state */
@@ -439,7 +446,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2,
 		 * this CPU from the Secure world. If so, then indicate that the
 		 * SPM core initialised successfully.
 		 */
-		if ((in_sstate == SECURE) && (ctx->state == SPMC_STATE_RESET))
+		if ((in_sstate == SECURE) &&
+		    (ctx->state == AFF_STATE_ON_PENDING))
 			spmd_spm_core_sync_exit(0);
 	case SPCI_MSG_YIELD:
 		/* This interface must be invoked only by the Secure world */
