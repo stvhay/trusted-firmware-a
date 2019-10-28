@@ -381,8 +381,19 @@ u_register_t psci_smc_handler(uint32_t smc_fid,
 {
 	u_register_t ret;
 
-	if (is_caller_secure(flags))
-		return (u_register_t)SMC_UNK;
+	/*
+	 * Call PSCI secure SMC handler registered by the SPMD if one exists.
+	 */
+	if (is_caller_secure(flags)) {
+		if ((psci_spd_pm != NULL) &&
+		    (psci_spd_pm->psci_sec_smc_handler != NULL))
+			return psci_spd_pm->psci_sec_smc_handler(smc_fid,
+								 x1, x2, x3,
+								 x4, cookie,
+								 handle, flags);
+		else
+			return (u_register_t)SMC_UNK;
+	}
 
 	/* Check the fid against the capabilities */
 	if ((psci_caps & define_psci_cap(smc_fid)) == 0U)
