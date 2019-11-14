@@ -4,6 +4,7 @@
 	compatible = "arm,spmc_rd";
 
 	attribute {
+		spmc_id = <0x8000>;
 		maj_ver = <0x0>;
 		min_ver = <0x9>;
 		runtime_el = <0x1>;

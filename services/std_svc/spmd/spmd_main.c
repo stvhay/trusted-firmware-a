@@ -208,6 +208,16 @@ int32_t spmd_setup(void)
 
 	INFO("SPM core run time EL%x.\n", spmc_attrs.runtime_el);
 
+	/* Validate the SPMC ID, Ensure high bit is set */
+	if (!(spmc_attrs.spmc_id >> SPMC_SECURE_ID_SHIFT) &
+                SPMC_SECURE_ID_MASK) {
+		WARN("Invalid ID (0x%x) for SPMC.\n",
+		     spmc_attrs.spmc_id);
+		goto error;
+	}
+
+	INFO("SPMC ID %x.\n", spmc_attrs.spmc_id);
+
 	/* Validate the SPM core execution state */
 	if ((spmc_attrs.exec_state != MODE_RW_64) &&
 	    (spmc_attrs.exec_state != MODE_RW_32)) {
@@ -392,6 +402,29 @@ uint64_t spmd_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2,
 				 SMC_GET_GP(handle, CTX_GPREG_X6),
 				 SMC_GET_GP(handle, CTX_GPREG_X7));
 		}
+		case SPCI_ID_GET:
+			/*
+			 * Returns the ID of the calling SPCI component.
+			*/
+			if (in_sstate == NON_SECURE) {
+				SMC_RET8(handle, SPCI_SUCCESS,
+				         SPCI_TARGET_INFO_MBZ,
+						 SPCI_NS_ENDPOINT_ID,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ);
+			} else {
+				SMC_RET8(handle, SPCI_SUCCESS,
+				         SPCI_TARGET_INFO_MBZ,
+						 spmc_attrs.spmc_id,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ,
+						 SPCI_PARAM_MBZ);
+			}
 
 	case SPCI_RX_RELEASE:
 	case SPCI_RXTX_MAP_SMC32:
