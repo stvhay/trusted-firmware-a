@@ -49,6 +49,7 @@
 	};
 
 	spci {
-	     compatible = "arm,spci-alpha2";
+		compatible = "arm,spci";
+		conduit = "smc";
 	};
 };
