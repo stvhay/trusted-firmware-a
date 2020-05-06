@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2019-2020, Arm Limited. All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+{
+	"op-tee" : {
+		"image": "../optee_os/out/arm-plat-vexpress/core/tee-pager_v2.bin",
+		"pm": "optee_manifest.dts"
+	}
+}
