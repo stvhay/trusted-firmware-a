@@ -405,7 +405,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		 */
 		ret = MAKE_SPCI_VERSION(spmc_attrs.major_version,
 					spmc_attrs.minor_version);
-		SMC_RET8(handle, SPCI_SUCCESS_SMC32, SPCI_TARGET_INFO_MBZ, ret,
+		SMC_RET8(handle, ret, SPCI_TARGET_INFO_MBZ, SPCI_TARGET_INFO_MBZ,
 			 SPCI_PARAM_MBZ, SPCI_PARAM_MBZ, SPCI_PARAM_MBZ,
 			 SPCI_PARAM_MBZ, SPCI_PARAM_MBZ);
 		break; /* not reached */
