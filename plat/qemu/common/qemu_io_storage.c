@@ -39,6 +39,26 @@
 #define NT_FW_CONTENT_CERT_NAME		"nt_fw_content.crt"
 #endif /* TRUSTED_BOARD_BOOT */
 
+struct fw_update_metadata {
+
+	uint32_t header_crc_32;
+	uint32_t header_size;
+	uint32_t metadata_version;
+
+	uint32_t active_index;
+	uint32_t update_index;
+
+	/* Number of FW image supported by BSP. */
+	uint32_t image_count;
+
+	uint32_t specialization_size;
+	uint32_t specialization_crc_32;
+
+	/* XXX: When this value is stored in the metadata it should be encrypted. */
+//	UINT32 ROLLBACK_CTR;
+
+	uint8_t image[];
+};
 
 
 /* IO devices */
@@ -55,6 +75,11 @@ static uintptr_t enc_dev_handle;
 
 static const io_block_spec_t fip_block_spec = {
 	.offset = PLAT_QEMU_FIP_BASE,
+	.length = PLAT_QEMU_FIP_MAX_SIZE
+};
+
+static const io_block_spec_t fip_block_spec_b __unused = {
+	.offset = PLAT_QEMU_FIP_BASE_B,
 	.length = PLAT_QEMU_FIP_MAX_SIZE
 };
 
@@ -196,6 +221,11 @@ static const struct plat_io_policy policies[] = {
 		(uintptr_t)&fip_block_spec,
 		open_memmap
 	},
+	[FIP_IMAGE_ID_B] = {
+		&memmap_dev_handle,
+		(uintptr_t)&fip_block_spec_b,
+		open_memmap
+	},
 	[ENC_IMAGE_ID] = {
 		&fip_dev_handle,
 		(uintptr_t)NULL,
@@ -301,13 +331,45 @@ static const struct plat_io_policy policies[] = {
 #endif /* TRUSTED_BOARD_BOOT */
 };
 
+static uint32_t get_active_fip_image_id(void)
+{
+
+	/* TODO: load the metadata from flash rather than relying on emulated AHB reads. */
+	struct fw_update_metadata *metadata =
+		(struct fw_update_metadata *) PLAT_QEMU_IMAGE_METADATA;
+
+	uint32_t plat_get_trial(void);
+	uint32_t trial_run = plat_get_trial();
+
+	INFO("FWUpdate: active index %d, trial_run %d\n", metadata->active_index, trial_run);
+	uint32_t active_index = metadata->active_index;
+	uint32_t update_index = metadata->update_index;
+	uint32_t image_selector = trial_run > 0 ? update_index : active_index;
+
+	switch (image_selector) {
+		case 0:
+		 INFO("FWUpdate: boot image A\n");
+		 return FIP_IMAGE_ID;
+
+		case 1:
+		 INFO("FWUpdate: boot image B\n");
+		 return FIP_IMAGE_ID_B;
+
+		default:
+		 ERROR("erroneous active image index %d\n", active_index);
+		 panic();
+	}
+}
+
 static int open_fip(const uintptr_t spec)
 {
 	int result;
 	uintptr_t local_image_handle;
+	uint32_t fip_img_id = get_active_fip_image_id();
+	(void)fip_img_id;
 
 	/* See if a Firmware Image Package is available */
-	result = io_dev_init(fip_dev_handle, (uintptr_t)FIP_IMAGE_ID);
+	result = io_dev_init(fip_dev_handle, (uintptr_t)fip_img_id);
 	if (result == 0 && spec != (uintptr_t)NULL) {
 		result = io_open(fip_dev_handle, spec, &local_image_handle);
 		if (result == 0) {
@@ -432,7 +494,7 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 {
 	int result;
 	const struct plat_io_policy *policy;
-
+	printf("image_id %d\n", image_id);
 	assert(image_id < ARRAY_SIZE(policies));
 
 	policy = &policies[image_id];

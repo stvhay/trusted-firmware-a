@@ -14,6 +14,8 @@
 /* Firmware Image Package */
 #define FIP_IMAGE_ID			U(0)
 
+#define FIP_IMAGE_ID_B			U(31)
+
 /* Trusted Boot Firmware BL2 */
 #define BL2_IMAGE_ID			U(1)
 
