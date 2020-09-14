@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2019-2020, Arm Limited. All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+/dts-v1/;
+
+/ {
+	compatible = "arm,spmc_rd";
+
+	attribute {
+		maj_ver = <0x0>;
+		min_ver = <0x9>;
+		runtime_el = <0x2>;
+		exec_state = <0x0>;
+		load_address = <0x0 0x6000000>;
+		entrypoint = <0x0 0x6000000>;
+
+		/* State the register where the dtb is passed */
+		spm_init_register = "0";
+	};
+
+	chosen {
+		optee,initrd-start = <0xA000000>;
+		optee,initrd-end = <0xB000000>;
+
+		linux,initrd-start = <0xA000000>;
+		linux,initrd-end = <0xF000000>;
+		stdout-path = "serial0:115200n8";
+		bootargs =  "";
+	};
+
+	hypervisor {
+		compatible = "hafnium,hafnium";
+		vm32769 {
+			debug_name = "OPTEE_HF";
+			kernel_filename = "optee";
+			ramdisk_filename = "initrd.img";
+			uuid = <0x486178E0 0xE7F811E3 0xBC5E0002 0xA5D5C51B>;
+			messaging_method = <0x2>;
+		};
+		vm32770 {
+			debug_name = "BARE_SP";
+			vcpu_count = <1>;
+			mem_size = <0x100000>;
+			kernel_filename = "bare_metal_sp";
+			ramdisk_filename = "initrd.img";
+			uuid = <0x1 0x1 0x1 0x1>;
+			messaging_method = <0x2>;
+		};
+
+	};
+
+	memory@60000000 {
+		device_type = "memory";
+		reg = <0x0 0x7ffffff 0x1c090000 0x1c0A0000>;
+	};
+};
