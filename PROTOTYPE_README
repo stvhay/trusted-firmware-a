@@ -1,0 +1,166 @@
+--------------------------------------------------------------------------
+Disclaimer: This branch contains prototype code which is for demonstrative
+purposes only and to serve as proof of concept. It is designed to allow
+prototyping of new features and any productization paths if taken
+forward would be delivered through the master branch.
+--------------------------------------------------------------------------
+
+Getting Started
+---------------
+
+These instructions will help to recreate the FF-A prototype. This end goal is to
+run the OP-TEE xtest suite on linux from the normal world, with OP-TEE running
+in the secure world.  Optionally Hafnium can be used as the hypervisor in the
+Normal world and/or the SPM in the secure world which is configurable via
+arguments passed to the build script provided.
+
+
+Steps to clone the relevant repos
+---------------------------------
+
+Note: These set of instructions assume you have a "Base Directory" where the
+multi_build.sh script has been copied to and will be the parent directory to
+the required repository checkouts. Please see the final repo structure below.
+
+BASE_DIR=$(pwd)
+
+# Clone Hafnium:
+git clone $HAFNIUM_FFA_REL_PROTO_REPO hafnium
+cd $BASE_DIR/hafnium
+git checkout $HAFNIUM_FFA_REL_PROTO_BRANCH
+
+cd $BASE_DIR/hafnium/project/
+git clone $HF_PROJECT_REFERENCE_FFA_REL_PROTO_REPO reference
+cd reference
+git checkout $HF_PROJECT_REFERENCE_FFA_REL_PROTO_BRANCH
+cd $BASE_DIR/hafnium/
+
+# Initialise remaining submodules
+git submodule update --init prebuilts
+git submodule update --init third_party/googletest
+git submodule update --init third_party/dtc
+git submodule update --init third_party/linux
+cd $BASE_DIR
+
+
+# Clone ATF:
+git clone $ATF_FFA_REL_PROTO_REPO arm-trusted-firmware
+cd $BASE_DIR/arm-trusted-firmware
+git checkout $ATF_FFA_REL_PROTO_BRANCH
+cd $BASE_DIR/
+
+# Clone OP-TEE OS
+git clone $OPTEE_FFA_REL_PROTO_REPO optee_os
+cd $BASE_DIR/optee_os
+git checkout $OPTEE_FFA_REL_PROTO_BRANCH
+cd $BASE_DIR
+
+# Clone Linux Kernel
+git clone $LINUX_FFA_REL_PROTO_REPO linux_kernel
+cd $BASE_DIR/linux_kernel
+git checkout $LINUX_FFA_REL_PROTO_BRANCH
+cd $BASE_DIR
+
+
+Download FVP
+------------
+
+Download Armv8-A Base RevC AEM FVP from:
+https://developer.arm.com/tools-and-software/simulation-models/fixed-virtual-platforms/arm-ecosystem-models
+
+Extract into the `fvp` directory (the final file path should be
+$BASE_DIR/fvp/Base_RevC_AEMv8A_pkg/...)
+
+
+Prebuilts
+---------
+
+The script requires toolchains and prebuilt images that are reused from the
+OP-TEE build system. The script can automatically pull and build a full checkout
+of the OP-TEE build system with the `-e` option.
+
+To source a set of required pre-builts, either the script can pull the required
+files by providing it a file path to a full OP-TEE build with `-E <dir>`
+otherwise please populate the following directories:
+
+Required pre-builts to be placed in `prebuilts` directory with the following
+names.
+
+    - optee_rd.img (rootfs.cpio.gz from OP_TEE build)
+
+    - FVP_AARCH64_EFI.fd (from OP-TEE Build)
+
+    - boot-fat.uefi.img (from OP-TEE, required if running without EL2)
+
+Toolchains from OP-TEE to be placed in `toolchains` directory (or specified with
+`-T <dir>`)
+
+    - aarch32/...
+    - aarch64/...
+
+
+ Final Repo Structure
+--------------------
+
+.
+├── arm-trusted-firmware
+├── fvp
+│    └── Base_RevC_AEMv8A_pkg
+├── hafnium
+│   ├── ...
+│   └── project
+│       └── reference
+├── linux_kernel
+├── multi_build.sh
+├── optee_os
+├── prebuilts
+│    ├── optee_rd.img
+│    ├── FVP_AARCH64_EFI.fd
+│    └── boot-fat.uefi.img
+└── toolchains
+    ├── aarch32
+    └── aarch64
+
+
+Running the Prototype
+---------------------
+
+Subsequent common run commands are as follows:
+
+./multi_build.sh -y 1 -Y 1   # Build the prototype with EL2 and S-EL2 enabled.
+
+By default the script will build the required repositories and launch the FVP.
+
+This should drop into a shell which can be logged in with the username: `root`.
+From here you can run the entire xtest suite with the command `xtest` or a
+specific test with xtest <test_num>.
+
++------------------+--------------------------------------------------------+
+| Common Arguments | Description                                            |
++------------------+--------------------------------------------------------+
+| -y 0 -Y 0        | Build and run the prototype, use the arguments, `-y X` |
+|                  |  and `-Y X` to indicate the presence of a hypervisor   |
+|                  | in the normal and secure world respectively.           |
++------------------+--------------------------------------------------------+
+| -m               | Run with 8 CPUs instead of the default single core     |
+|                  | mode (configured via dtb).                             |
++------------------+--------------------------------------------------------+
+| -k               | Re-build the linux kernel, to save time this is not    |
+|                  | performed by default.                                  |
++------------------+--------------------------------------------------------+
+| -B               | Build only mode, perform the usual compilation but     |
+|                  | without running the FVP.                               |
++------------------+--------------------------------------------------------+
+| -r               | Run only, launch the FVP with existing files.          |
++------------------+--------------------------------------------------------+
+| -d               | Launch the FVP and instruct it to wait to connect      |
+|                  | to a debugger.                                         |
++------------------+--------------------------------------------------------+
+| -x               | Don't launch the xterm windows and instead wait for    |
+|                  | connection via telnet.                                 |
++------------------+--------------------------------------------------------+
+| -X               | Don't launch the xterm windows and automatically use   |
+|                  | tmux to connect via telnet.                            |
++------------------+--------------------------------------------------------+
+
+*Copyright (c) 2013-2020, Arm Limited and Contributors. All rights reserved.*
