@@ -207,6 +207,9 @@
 #define DEVICE1_BASE			0x09000000
 #define DEVICE1_SIZE			0x00041000
 
+#define PSCI_BASE               0x090c0000
+#define PSCI_SIZE               0x1000
+
 /*
  * GIC related constants
  */

@@ -28,6 +28,10 @@
 					MT_DEVICE | MT_RO | MT_SECURE)
 #endif
 
+#define MAP_PSCI	MAP_REGION_FLAT(PSCI_BASE,			\
+					PSCI_SIZE,			\
+					MT_DEVICE | MT_RW | MT_SECURE)
+
 #define MAP_SHARED_RAM	MAP_REGION_FLAT(SHARED_RAM_BASE,		\
 					SHARED_RAM_SIZE,		\
 					MT_DEVICE  | MT_RW | MT_SECURE)
@@ -61,6 +65,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #ifdef MAP_DEVICE2
 	MAP_DEVICE2,
 #endif
+    MAP_PSCI,
 	{0}
 };
 #endif
@@ -76,6 +81,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #ifdef MAP_DEVICE2
 	MAP_DEVICE2,
 #endif
+    MAP_PSCI,
 	MAP_NS_DRAM0,
 	MAP_BL32_MEM,
 	{0}
@@ -88,6 +94,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #ifdef MAP_DEVICE1
 	MAP_DEVICE1,
 #endif
+    MAP_PSCI,
 	MAP_BL32_MEM,
 	{0}
 };
@@ -99,6 +106,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 #ifdef MAP_DEVICE1
 	MAP_DEVICE1,
 #endif
+    MAP_PSCI,
 	{0}
 };
 #endif

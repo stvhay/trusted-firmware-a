@@ -11,11 +11,17 @@
 #include <common/debug.h>
 #include <lib/psci/psci.h>
 #include <lib/semihosting.h>
+#include <lib/mmio.h>
 #include <plat/common/platform.h>
 
 #include "qemu_private.h"
 
 #define ADP_STOPPED_APPLICATION_EXIT 0x20026
+
+enum psci_powerstates {
+    EC_CMD_POWEROFF = 0x01,
+    EC_CMD_REBOOT = 0x02,
+};
 
 /*
  * The secure entry point to be used on warm reset.
@@ -203,14 +209,16 @@ void qemu_pwr_domain_suspend_finish(const psci_power_state_t *target_state)
  ******************************************************************************/
 static void __dead2 qemu_system_off(void)
 {
-	semihosting_exit(ADP_STOPPED_APPLICATION_EXIT, 0);
+//	semihosting_exit(ADP_STOPPED_APPLICATION_EXIT, 0);
 	ERROR("QEMU System Off: semihosting call unexpectedly returned.\n");
+	mmio_write_32(PSCI_BASE, EC_CMD_REBOOT);
 	panic();
 }
 
 static void __dead2 qemu_system_reset(void)
 {
-	ERROR("QEMU System Reset: operation not handled.\n");
+	ERROR("QEMU System Reset: operation handled.\n");
+	mmio_write_32(PSCI_BASE, EC_CMD_REBOOT);
 	panic();
 }
 
