@@ -61,7 +61,7 @@ $(if ${ROT_KEY},$(eval $(call CERT_ADD_CMD_OPT,${ROT_KEY},--rot-key,FWU_)))
 $(if ${PROT_KEY},$(eval $(call CERT_ADD_CMD_OPT,${PROT_KEY},--prot-key)))
 $(if ${TRUSTED_WORLD_KEY},$(eval $(call CERT_ADD_CMD_OPT,${TRUSTED_WORLD_KEY},--trusted-world-key)))
 $(if ${NON_TRUSTED_WORLD_KEY},$(eval $(call CERT_ADD_CMD_OPT,${NON_TRUSTED_WORLD_KEY},--non-trusted-world-key)))
-
+$(eval $(call CERT_ADD_CMD_OPT,,-p))
 
 # Add the BL2 CoT (image cert)
 ifeq (${BL2_AT_EL3}, 0)
