@@ -75,12 +75,14 @@ void bl2_el3_setup(u_register_t arg0, u_register_t arg1, u_register_t arg2,
  * next BL. The memory occupied by BL2 will be reclaimed by BL3x stages. BL2
  * runs entirely in S-EL1.
  ******************************************************************************/
+bool plat_get_trial(void);
 void bl2_main(void)
 {
 	entry_point_info_t *next_bl_ep_info;
 
 	NOTICE("BL2: %s\n", version_string);
 	NOTICE("BL2: %s\n", build_message);
+	NOTICE("BL2: trial_run = %d\n", plat_get_trial());
 
 	/* Perform remaining generic architectural setup in S-EL1 */
 	bl2_arch_setup();

@@ -81,14 +81,24 @@ void bl1_setup(void)
  * It also queries the platform to load and run next BL image. Only called
  * by the primary cpu after a cold boot.
  ******************************************************************************/
-void bl1_main(void)
+
+uint32_t plat_get_trial(void);
+void plat_decrement_trial(void);
+
+void bl1_main()
 {
 	unsigned int image_id;
+	uint32_t trial_run;
+
+	trial_run = plat_get_trial();
+	if (trial_run)
+		plat_decrement_trial();
 
 	/* Announce our arrival */
 	NOTICE(FIRMWARE_WELCOME_STR);
 	NOTICE("BL1: %s\n", version_string);
 	NOTICE("BL1: %s\n", build_message);
+	NOTICE("BL1: trial_run = %x\n", trial_run);
 
 	INFO("BL1: RAM %p - %p\n", (void *)BL1_RAM_BASE, (void *)BL1_RAM_LIMIT);
 
@@ -168,6 +178,7 @@ static void bl1_load_bl2(void)
 	image_desc_t *desc;
 	image_info_t *info;
 	int err;
+	uint32_t nv_ctr;
 
 	/* Get the image descriptor */
 	desc = bl1_plat_get_image_desc(BL2_IMAGE_ID);
@@ -196,6 +207,8 @@ static void bl1_load_bl2(void)
 		plat_error_handler(err);
 	}
 
+	plat_get_nv_ctr(NULL, &nv_ctr);
+	INFO("FIP version %d\n", nv_ctr);
 	NOTICE("BL1: Booting BL2\n");
 }
 

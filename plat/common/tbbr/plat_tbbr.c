@@ -50,3 +50,14 @@ int plat_set_nv_ctr2(void *cookie, const auth_img_desc_t *img_desc,
 	 */
 	return 1;
 }
+
+__attribute__((__weak__)) void plat_signal_trial(void)
+{
+	return;
+}
+
+__attribute__((__weak__)) bool plat_get_trial(void)
+{
+	return false;
+}
+
