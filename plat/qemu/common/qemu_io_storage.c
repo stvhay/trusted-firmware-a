@@ -39,27 +39,91 @@
 #define NT_FW_CONTENT_CERT_NAME		"nt_fw_content.crt"
 #endif /* TRUSTED_BOARD_BOOT */
 
-struct fw_update_metadata {
+/* Number of images per-set */
+#define FWU_N 1
+/* Number of sets */
+#define FWU_K 2
+struct fw_image_metadata_entry {
+	uuid_t image_guid;
+
+	/* Address of image A and image B */
+	uint64_t image_start[FWU_K];
+
+	uint64_t maximum_image_size;
+};
+
+struct fwu_metadata {
 
 	uint32_t header_crc_32;
-	uint32_t header_size;
 	uint32_t metadata_version;
 
 	uint32_t active_index;
 	uint32_t update_index;
 
-	/* Number of FW image supported by BSP. */
-	uint32_t image_count;
-
-	uint32_t specialization_size;
-	uint32_t specialization_crc_32;
-
-	/* XXX: When this value is stored in the metadata it should be encrypted. */
-//	UINT32 ROLLBACK_CTR;
-
-	uint8_t image[];
+	struct fw_image_metadata_entry image[FWU_N];
 };
+#define FWU_METADATA_SIZE sizeof(struct fwu_metadata)
 
+void print_metadata(struct fwu_metadata *metadata)
+{
+	INFO("---metadata--------------------\n");
+	INFO("header_crc_32 %x\n", metadata->header_crc_32);
+	INFO("metadata_version %x\n", metadata->metadata_version );
+	INFO("active_index %x\n", metadata->active_index );
+	INFO("update_index %x\n", metadata->update_index );
+	INFO("image[0].image_guid %p\n", &metadata->image[0].image_guid);
+	INFO("image[0].image_start[0] %llx\n", metadata->image[0].image_start[0]);
+	INFO("image[0].image_start[1] %llx\n", metadata->image[0].image_start[1]);
+	INFO("image[0].maximum_image_size %llx\n", metadata->image[0].maximum_image_size);
+	INFO("-------------------------------\n");
+}
+
+/*
+uint32_t compute_crc32(uint32_t *buf, uint32_t size)
+{
+	uint32_t hw_crc32_available;
+	static const uint32_t crc_implemented_mask = 0x1<<16;
+	uint32_t crc32 = 0;
+	uint32_t num_entries = size/sizeof(*buf);
+
+	asm volatile("mrs %0, id_aa64isar0_el1\n":"=r"(hw_crc32_available));
+
+	hw_crc32_available = !!(hw_crc32_available & crc_implemented_mask);
+	if(!hw_crc32_available)	{
+		ERROR("FWU: crc32 instructions not present -- the prototype code assumes the crc32 are implemented in HW\n");
+		panic();
+	}
+
+	for(uint32_t *end_buf = buf+num_entries; buf<end_buf; buf++)
+	{
+		INFO("CRC  %x\n", *buf);
+		asm volatile("crc32cw %w0, %w1, %w2": "=r"(crc32): "r"(crc32), "r"(buf));
+	}
+
+	return crc32;	
+}
+
+uint32_t compute_metadata_crc(struct fwu_metadata *metadata)
+{
+	uint32_t metadata_crc = compute_crc32(&metadata->metadata_version,
+		FWU_METADATA_SIZE - offsetof(struct fwu_metadata, metadata_version));
+
+	INFO("FWU: metadata crc32 %x\n", metadata_crc);
+
+	return metadata_crc;
+}
+*/
+
+bool is_metadata_intact(struct fwu_metadata *metadata)
+{
+
+	/*
+	 * XXX: crc32 computation not implemented yet in prototype.
+	 * For now metadata corruption is grossly reported when header_crc_32 is zero.
+	 */
+	return metadata->header_crc_32;
+	//return metadata->header_crc_32 == compute_metadata_crc(metadata);
+}
 
 /* IO devices */
 static const io_dev_connector_t *fip_dev_con;
@@ -335,28 +399,62 @@ static uint32_t get_active_fip_image_id(void)
 {
 
 	/* TODO: load the metadata from flash rather than relying on emulated AHB reads. */
-	struct fw_update_metadata *metadata =
-		(struct fw_update_metadata *) PLAT_QEMU_IMAGE_METADATA;
+	struct fwu_metadata *metadata_main =
+		(struct fwu_metadata *) PLAT_QEMU_MAIN_METADATA;
+	struct fwu_metadata *metadata_fallback =
+		(struct fwu_metadata *) PLAT_QEMU_FALLBACK_METADATA;
+
+	struct fwu_metadata *metadata = NULL;
 
 	uint32_t plat_get_trial(void);
 	uint32_t trial_run = plat_get_trial();
+ 
+	uint32_t image_selector;
 
-	INFO("FWUpdate: active index %d, trial_run %d\n", metadata->active_index, trial_run);
-	uint32_t active_index = metadata->active_index;
-	uint32_t update_index = metadata->update_index;
-	uint32_t image_selector = trial_run > 0 ? update_index : active_index;
 
+	if (!is_metadata_intact(metadata_main))
+	{
+		INFO("FWU: Main metadata corrupted\n");
+		print_metadata(metadata_main);
+
+		if (!is_metadata_intact(metadata_fallback))
+		{
+			ERROR("FWU: main and fallback metadata are corrupted\n");
+			print_metadata(metadata_fallback);
+		} else {
+			metadata = metadata_fallback;
+		}
+	
+	} else {
+		metadata = metadata_main;
+	}
+
+	if (metadata)
+	{
+		uint32_t active_index = metadata->active_index;
+		uint32_t update_index = metadata->update_index;
+		image_selector = trial_run > 0 ? update_index : active_index;
+	} else {
+		/*
+		 * Both main and fallback metadata are corrupted. platform must select
+		 * rescue image to boot from.
+		 * XXX: in this prototype, for prototype simplicity, the rescue image is index 0.
+		*/
+		image_selector = 0;
+	}
+
+	INFO("FWU: image selector %d, trial_run %d\n", image_selector, trial_run);
 	switch (image_selector) {
 		case 0:
-		 INFO("FWUpdate: boot image A\n");
+		 INFO("FWU: boot image A\n");
 		 return FIP_IMAGE_ID;
 
 		case 1:
-		 INFO("FWUpdate: boot image B\n");
+		 INFO("FWU: boot image B\n");
 		 return FIP_IMAGE_ID_B;
 
 		default:
-		 ERROR("erroneous active image index %d\n", active_index);
+		 ERROR("erroneous image index %d\n", image_selector);
 		 panic();
 	}
 }
