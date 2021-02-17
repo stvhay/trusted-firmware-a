@@ -72,6 +72,8 @@ typedef struct sp_context {
 	uint64_t c_rt_ctx;
 	cpu_context_t cpu_ctx;
 	xlat_ctx_t *xlat_ctx_handle;
+	uint64_t   sp_stack_base;
+	uint64_t   sp_pcpu_stack_size;
 
 	sp_state_t state;
 	spinlock_t state_lock;

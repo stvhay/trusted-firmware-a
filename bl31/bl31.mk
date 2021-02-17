@@ -23,6 +23,16 @@ ifeq (${SPM_MM},1)
   endif
 endif
 
+ifeq (${SPMC_AT_EL3},1)
+  ifeq (${EL3_EXCEPTION_HANDLING},0)
+    $(error EL3_EXCEPTION_HANDLING must be 1 for SPMC support)
+  else
+    $(info Including SPMC  makefile)
+    include services/std_svc/spm/common/spm.mk
+    include services/std_svc/spm/spmc/spmc.mk
+  endif
+endif
+
 include lib/psci/psci_lib.mk
 
 BL31_SOURCES		+=	bl31/bl31_main.c				\
@@ -40,6 +50,7 @@ BL31_SOURCES		+=	bl31/bl31_main.c				\
 				${PSCI_LIB_SOURCES}				\
 				${SPMD_SOURCES}					\
 				${SPM_MM_SOURCES}				\
+				${SPMC_SOURCES}					\
 				${SPM_SOURCES}
 
 ifeq (${DISABLE_MTPMU},1)

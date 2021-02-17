@@ -84,7 +84,7 @@ SECTIONS
     ASSERT(__CPU_OPS_END__ > __CPU_OPS_START__,
            "cpu_ops not defined for this platform.")
 
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 #ifndef SPM_SHIM_EXCEPTIONS_VMA
 #define SPM_SHIM_EXCEPTIONS_VMA         RAM
 #endif
