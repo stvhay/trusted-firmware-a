@@ -25,6 +25,8 @@
 #include <smccc_helpers.h>
 #include "spmd_private.h"
 
+#include <services/spmc_svc.h>
+
 /*******************************************************************************
  * SPM Core context information.
  ******************************************************************************/
@@ -93,7 +95,9 @@ static uint64_t spmd_smc_forward(uint32_t smc_fid,
 				 uint64_t x2,
 				 uint64_t x3,
 				 uint64_t x4,
-				 void *handle);
+				 void *handle,
+				 void *cookie,
+				 uint64_t flags);
 
 /*******************************************************************************
  * This function takes an SPMC context pointer and performs a synchronous
@@ -302,8 +306,49 @@ static int spmd_spmc_init(void *pm_addr)
  ******************************************************************************/
 int spmd_setup(void)
 {
+	uint64_t rc;
 	void *spmc_manifest;
-	int rc;
+
+	if (is_spmc_at_el3()) {
+		spmd_spm_core_context_t *ctx = spmd_get_context();
+		unsigned int linear_id = plat_my_core_pos();
+		unsigned int core_id;
+
+		VERBOSE("SPM Core init start.\n");
+
+		ctx->state = SPMC_STATE_ON_PENDING;
+
+		/* Set the SPMC context state on other CPUs to OFF */
+		for (core_id = 0U; core_id < PLATFORM_CORE_COUNT; core_id++) {
+			if (core_id != linear_id)
+				spm_core_context[core_id].state = SPMC_STATE_OFF;
+		}
+
+		/* Get SPMC manifest address */
+		spmc_manifest = spmc_get_config_addr();
+		if (spmc_manifest == NULL) {
+			ERROR("Invalid or absent SPM Core manifest.\n");
+			return -EINVAL;
+		}
+
+		/* Load the SPM Core manifest */
+		rc = plat_spm_core_manifest_load(&spmc_attrs, spmc_manifest);
+		if (rc != 0) {
+			WARN("No or invalid SPM Core manifest provided by BL2\n");
+			return rc;
+		}
+
+		rc = spmc_setup();
+		if (rc != 0ULL) {
+			ERROR("SPMC initialisation failed 0x%llx\n", rc);
+			return 0;
+		}
+
+		ctx->state = SPMC_STATE_ON;
+
+		VERBOSE("SPM Core init end.\n");
+		return 0;
+	}
 
 	spmc_ep_info = bl31_plat_get_next_image_ep_info(SECURE);
 	if (spmc_ep_info == NULL) {
@@ -342,8 +387,15 @@ static uint64_t spmd_smc_forward(uint32_t smc_fid,
 				 uint64_t x2,
 				 uint64_t x3,
 				 uint64_t x4,
-				 void *handle)
+				 void *handle,
+				 void *cookie,
+				 uint64_t flags)
 {
+	if (is_spmc_at_el3()) {
+		return spmc_smc_handler(smc_fid, x1, x2, x3, x4, cookie,
+					handle, flags);
+	}
+
 	unsigned int secure_state_in = (secure_origin) ? SECURE : NON_SECURE;
 	unsigned int secure_state_out = (!secure_origin) ? SECURE : NON_SECURE;
 
@@ -401,6 +453,10 @@ bool spmd_check_address_in_binary_image(uint64_t address)
  *****************************************************************************/
 static bool spmd_is_spmc_message(unsigned int ep)
 {
+	if (is_spmc_at_el3()) {
+		return false;
+	}
+
 	return ((ffa_endpoint_destination(ep) == SPMD_DIRECT_MSG_ENDPOINT_ID)
 		&& (ffa_endpoint_source(ep) == spmc_attrs.spmc_id));
 }
@@ -459,7 +515,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		}
 
 		return spmd_smc_forward(smc_fid, secure_origin,
-					x1, x2, x3, x4, handle);
+					x1, x2, x3, x4, handle,
+					cookie, flags);
 		break; /* not reached */
 
 	case FFA_VERSION:
@@ -505,7 +562,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		/* Forward SMC from Normal world to the SPM Core */
 		if (!secure_origin) {
 			return spmd_smc_forward(smc_fid, secure_origin,
-						x1, x2, x3, x4, handle);
+						x1, x2, x3, x4, handle,
+						cookie, flags);
 		}
 
 		/*
@@ -541,7 +599,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		break; /* not reached */
 
 	case FFA_SECONDARY_EP_REGISTER_SMC64:
-		if (secure_origin) {
+		if (secure_origin && spmd_is_spmc_message(x1)) {
 			ret = spmd_pm_secondary_ep_register(x1);
 
 			if (ret < 0) {
@@ -601,7 +659,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		} else {
 			/* Forward direct message to the other world */
 			return spmd_smc_forward(smc_fid, secure_origin,
-				x1, x2, x3, x4, handle);
+						x1, x2, x3, x4, handle,
+						cookie, flags);
 		}
 		break; /* Not reached */
 
@@ -611,7 +670,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		} else {
 			/* Forward direct message to the other world */
 			return spmd_smc_forward(smc_fid, secure_origin,
-				x1, x2, x3, x4, handle);
+						x1, x2, x3, x4, handle,
+						cookie, flags);
 		}
 		break; /* Not reached */
 
@@ -659,7 +719,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		 */
 
 		return spmd_smc_forward(smc_fid, secure_origin,
-					x1, x2, x3, x4, handle);
+					x1, x2, x3, x4, handle,
+					cookie, flags);
 		break; /* not reached */
 
 	case FFA_MSG_WAIT:
@@ -682,7 +743,8 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		}
 
 		return spmd_smc_forward(smc_fid, secure_origin,
-					x1, x2, x3, x4, handle);
+					x1, x2, x3, x4, handle,
+					cookie, flags);
 		break; /* not reached */
 
 	default:
