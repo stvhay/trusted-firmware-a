@@ -19,6 +19,10 @@
 #include <plat/common/platform.h>
 #include <platform_def.h>
 
+#ifdef SPMC_AT_EL3
+#include <services/spmc_svc.h>
+#endif
+
 /*
  * Placeholder variables for copying the arguments that have been passed to
  * BL31 from BL2.
@@ -184,6 +188,11 @@ void __init arm_bl31_early_platform_setup(void *from_bl2, uintptr_t soc_fw_confi
 
 	if (bl33_image_ep_info.pc == 0U)
 		panic();
+
+#if SPMC_AT_EL3
+	spmc_set_config_addr(soc_fw_config);
+#endif
+
 #endif /* RESET_TO_BL31 */
 
 # if ARM_LINUX_KERNEL_AS_BL33

@@ -341,6 +341,10 @@ BL31_SOURCES		+=	plat/common/plat_spmd_manifest.c	\
 
 endif
 
+ifeq (${SPMC_AT_EL3},1)
+BL31_SOURCES		+=	services/std_svc/spm/spmc/spmc_main.c
+endif
+
 ifneq (${TRUSTED_BOARD_BOOT},0)
 
     # Include common TBB sources
