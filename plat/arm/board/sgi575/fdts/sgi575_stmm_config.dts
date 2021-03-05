@@ -1,0 +1,190 @@
+/*
+ * Copyright (c) 2020-21, ARM Limited and Contributors. All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/memory/memory.h>
+
+#define MODE_EL0	(0x0)
+#define MODE_EL1	(0x1)
+#define MODE_EL2	(0x2)
+
+/ {
+	compatible = "arm,ffa-manifest";
+
+	/*
+	 * Size is defining the boundary for area, which will be reserved in
+	 * Secure Partition memory region to store StandAloneMM(StMM) boot
+	 * data. In this area StMM boot data will be copied from DTS config,
+	 * for successful StMM booting.
+	 */
+	configsize {
+		compatible = "config-size";
+		size    = <0x1000>;
+	};
+
+	/*
+	 * Following booting parameters are used by StandAloneMM
+	 * during it's booting.
+	 * Earlier this boot data information was part of plat
+	 * specific file. Now this boot parameters are captured in this
+	 * fw_config file, and address of the fw_config is passed to
+	 * StMM as booting argument.
+	 */
+	bootarg {
+		compatible = "bootargs";
+		h_type  = <0x7>;
+		h_version = <0x1>;
+		h_size    = <128>;
+		h_attr    = <0>;
+		sp_mem_base         = <0x00000000 0xFF200000>;
+		sp_mem_limit        = <0x00000000 0xFFC00000>;
+		sp_image_base       = <0x00000000 0xFF200000>;
+		sp_stack_base       = <0x00000000 0xFF640000>;
+		sp_heap_base        = <0x00000000 0xFF650000>;
+		sp_ns_comm_buf_base = <0x00000000 0xFF600000>;
+		sp_shared_buf_base  = <0x00000000 0xFF500000>;
+		sp_image_size       = <0x00000000 0x300000>;
+		sp_pcpu_stack_size  = <0x00000000 0x2000>;
+		sp_heap_size        = <0x00000000 0x5B0000>;
+		sp_ns_comm_buf_size = <0x00000000 0x10000>;
+		sp_shared_buf_size  = <0x00000000 0x100000>;
+		num_sp_mem_regions  = <0x6>;
+		num_cpus            = <0x8>;
+	};
+
+	/*
+	 * FF-A compatible Secure Partition Manager parses the
+	 * config file and fetch the following booting arguments to
+	 * pass on to StandAloneMM(StMM) Secure Partition.
+	 * arg0 : Buffer base which is shared between EL3 and S-EL0.
+	 * arg1 : Shared Buffer size.
+	 * arg2 : TOS_FW_CONFIG address.
+	 */
+	ffa-config {
+		compatible = "ffa-configs";
+		partition_id = <0x1>;
+		sp_arg0 = <0x0 0xff500000>;
+		sp_arg1 = <0x0 0x100000>;
+		sp_arg2 = <0x0 0x4001500>;
+		load_address = <0x0 0xff200000>;
+		stack_base = <0x0 0xff640000>;
+		stack_size = <0x0 0x2000>;
+
+		runtime-el = <MODE_EL0>;
+	};
+
+	mem-regions {
+		compatible = "mem-regions";
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		/*
+		 * System registers region for access from S-EL0.
+		 * Similar to PLAT_ARM_SECURE_MAP_SYSTEMREG.
+		 */
+		mem-region@1 {
+			reg  = <0x0 0x1C010000 0x0 0x00010000>;
+			mem_region_type = <MEM_DEVICE>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RW>;
+			granularity = <0x40000000>;
+		};
+
+		/*
+		 * ARM CSS SoC Peripherals and PCIe expansion area.
+		 * Similar to SOC_CSS_MAP_DEVICE.
+		 */
+		mem-region@2 {
+			reg = <0x0 0x40000000 0x0 0x40000000>;
+			mem_region_type = <MEM_DEVICE>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RW>;
+			granularity = <0x40000000>;
+		};
+
+		/*
+		 * SPM Payload memory. Mapped as code region for S-EL0
+		 * Similar to ARM_SP_IMAGE_MMAP.
+		 */
+		mem-region@3 {
+			reg = <0x0 0xff200000 0x0 0x00300000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_CODE>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * Memory shared between EL3 and S-EL0.
+		 * Similar to ARM_SPM_BUF_EL0_MMAP.
+		 */
+		mem-region@4 {
+			reg = <0x0 0xff500000 0x0 0x00100000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RO_DATA>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * Memory shared between Normal world and S-EL0.
+		 * Similar to ARM_SP_IMAGE_NS_BUF_MMAP.
+		 */
+		mem-region@5 {
+			reg = <0x0 0xff600000 0x0 0x00010000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_NON_SECURE>;
+			mem_region_access = <MEM_RW_DATA>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * CPER buffer memory.
+		 * Similar to CSS_SGI_SP_CPER_BUF_MMAP.
+		 */
+		mem-region@6 {
+			reg  = <0x0 0xff610000 0x0 0x00020000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RW_DATA>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * Secure Partition Stack region.
+		 */
+		mem-region@7 {
+			reg = <0x0 0xff630000 0x0 0x005d0000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RW_DATA>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * Firmware config region.
+		 */
+		mem-region@8 {
+			reg = <0x0 0x4001000 0x0 0x0004000>;
+			mem_region_type = <MEM_NORMAL>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RO_DATA>;
+			granularity = <0x1000>;
+		};
+
+		/*
+		 * NOR2 Flash region, used for Secure booting.
+		 */
+		mem-region@9 {
+			reg = <0x0 0x10000000 0x0 0x04000000>;
+			mem_region_type = <MEM_DEVICE>;
+			mem_region_secure = <MEM_SECURE>;
+			mem_region_access = <MEM_RW>;
+			granularity = <0x40000000>;
+		};
+	};
+};

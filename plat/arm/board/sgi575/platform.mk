@@ -54,6 +54,13 @@ NT_FW_CONFIG		:=	${BUILD_PLAT}/fdts/${PLAT}_nt_fw_config.dtb
 # Add the NT_FW_CONFIG to FIP and specify the same to certtool
 $(eval $(call TOOL_ADD_PAYLOAD,${NT_FW_CONFIG},--nt-fw-config,${NT_FW_CONFIG}))
 
+STMM_CONFIG_DTS		:=	${SGI575_BASE}/fdts/${PLAT}_stmm_config.dts
+FDT_SOURCES		+=	${STMM_CONFIG_DTS}
+TOS_FW_CONFIG		:=	${BUILD_PLAT}/fdts/$(notdir $(basename ${STMM_CONFIG_DTS})).dtb
+
+# Add the TOS_FW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${TOS_FW_CONFIG},--tos-fw-config,${TOS_FW_CONFIG}))
+
 SOC_MANIFEST_DTS       :=      ${SGI575_BASE}/fdts/${PLAT}_soc_fw_config.dts
 FDT_SOURCES            +=      ${SOC_MANIFEST_DTS}
 SOC_FW_CONFIG          :=      ${BUILD_PLAT}/fdts/$(notdir $(basename ${SOC_MANIFEST_DTS})).dtb
