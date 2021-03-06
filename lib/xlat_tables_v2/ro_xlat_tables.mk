@@ -34,4 +34,9 @@ else # if AArch64
                  attributes, which is not possible once the translation tables \
                  have been made read-only.")
     endif
+    ifeq (${SPMC_AT_EL3},1)
+        $(error "SPMC requires functionality to change memory region \
+                 attributes, which is not possible once the translation tables \
+                 have been made read-only.")
+    endif
 endif
