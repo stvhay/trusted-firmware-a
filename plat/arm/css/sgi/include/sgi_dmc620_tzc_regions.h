@@ -9,7 +9,7 @@
 
 #include <drivers/arm/tzc_dmc620.h>
 
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 #define CSS_SGI_DMC620_TZC_REGIONS_DEF				\
 	{							\
 		.region_base = ARM_AP_TZC_DRAM1_BASE,		\

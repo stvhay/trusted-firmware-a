@@ -16,7 +16,7 @@
 #include <drivers/arm/sbsa.h>
 #include <sgi_base_platform_def.h>
 
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 #include "spm_partition.h"
 #endif
 
@@ -61,7 +61,7 @@ const mmap_region_t plat_arm_mmap[] = {
 #if ARM_BL31_IN_DRAM
 	ARM_MAP_BL31_SEC_DRAM,
 #endif
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 	ARM_SP_IMAGE_MMAP,
 #endif
 #if TRUSTED_BOARD_BOOT && !BL2_AT_EL3
@@ -79,7 +79,7 @@ const mmap_region_t plat_arm_mmap[] = {
 	ARM_V2M_MAP_MEM_PROTECT,
 #endif
 	SOC_CSS_MAP_DEVICE,
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 	ARM_SPM_BUF_EL3_MMAP,
 #endif
 	{0}

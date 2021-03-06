@@ -32,11 +32,11 @@
  * chips are accessed - secure ram, css device and soc device regions.
  */
 #if defined(IMAGE_BL31)
-# if SPM_MM
+# if SPM_MM || SPMC_AT_EL3
 #  define PLAT_ARM_MMAP_ENTRIES		(9  + ((CSS_SGI_CHIP_COUNT - 1) * 3))
 #  define MAX_XLAT_TABLES		(7  + ((CSS_SGI_CHIP_COUNT - 1) * 3))
-#  define PLAT_SP_IMAGE_MMAP_REGIONS	9
-#  define PLAT_SP_IMAGE_MAX_XLAT_TABLES	11
+#  define PLAT_SP_IMAGE_MMAP_REGIONS	10
+#  define PLAT_SP_IMAGE_MAX_XLAT_TABLES	12
 # else
 #  define PLAT_ARM_MMAP_ENTRIES		(5 + ((CSS_SGI_CHIP_COUNT - 1) * 3))
 #  define MAX_XLAT_TABLES		(6 + ((CSS_SGI_CHIP_COUNT - 1) * 3))
@@ -89,7 +89,7 @@
  *
  */
 #if TRUSTED_BOARD_BOOT
-# define PLAT_ARM_MAX_BL2_SIZE		(0x1D000 + ((CSS_SGI_CHIP_COUNT - 1) * \
+# define PLAT_ARM_MAX_BL2_SIZE		(0x1E000 + ((CSS_SGI_CHIP_COUNT - 1) * \
 							0x2000))
 #else
 # define PLAT_ARM_MAX_BL2_SIZE		(0x14000 + ((CSS_SGI_CHIP_COUNT - 1) * \
@@ -121,7 +121,7 @@
 #elif defined(IMAGE_BL2U)
 # define PLATFORM_STACK_SIZE 0x400
 #elif defined(IMAGE_BL31)
-# if SPM_MM
+# if SPM_MM || SPMC_AT_EL3
 #  define PLATFORM_STACK_SIZE 0x500
 # else
 #  define PLATFORM_STACK_SIZE 0x400
@@ -184,7 +184,7 @@
 
 #define PLAT_SP_PRI				PLAT_RAS_PRI
 
-#if SPM_MM && RAS_EXTENSION
+#if (SPM_MM || SPMC_AT_EL3) && RAS_EXTENSION
 /*
  * CPER buffer memory of 128KB is reserved and it is placed adjacent to the
  * memory shared between EL3 and S-EL0.
@@ -206,14 +206,14 @@
 #define PLAT_ARM_SP_IMAGE_STACK_BASE		(PLAT_SP_IMAGE_NS_BUF_BASE +   \
 						 PLAT_SP_IMAGE_NS_BUF_SIZE +   \
 						 CSS_SGI_SP_CPER_BUF_SIZE)
-#elif SPM_MM
+#elif SPM_MM || SPMC_AT_EL3
 /*
  * Secure partition stack follows right after the memory region that is shared
  * between EL3 and S-EL0.
  */
 #define PLAT_ARM_SP_IMAGE_STACK_BASE	(PLAT_SP_IMAGE_NS_BUF_BASE +	\
 					 PLAT_SP_IMAGE_NS_BUF_SIZE)
-#endif /* SPM_MM && RAS_EXTENSION */
+#endif /* (SPM_MM || SPMC_AT_EL3) && RAS_EXTENSION */
 
 /* Platform ID address */
 #define SSC_VERSION                     (SSC_REG_BASE + SSC_VERSION_OFFSET)
@@ -257,5 +257,14 @@
 	{CSS_SGI_REMOTE_CHIP_MEM_OFFSET(n) + ARM_DRAM2_BASE,		\
 		CSS_SGI_REMOTE_CHIP_MEM_OFFSET(n) + ARM_DRAM2_END,	\
 		ARM_TZC_NS_DRAM_S_ACCESS, PLAT_ARM_TZC_NS_DEV_ACCESS}
+
+/*
+ * Number of Secure Partitions supported.
+ * SPMC at EL3, uses this count to configure the maximum number of supported
+ * secure paritions.
+ */
+#if defined(SPMC_AT_EL3)
+#define SECURE_PARTITION_COUNT		1
+#endif
 
 #endif /* SGI_BASE_PLATFORM_DEF_H */

@@ -70,7 +70,7 @@
 						SOC_PLATFORM_PERIPH_SIZE, 	\
 						MT_DEVICE | MT_RW | MT_SECURE)
 
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 /*
  * Memory map definition for the platform peripheral memory region that is
  * accessible from S-EL0 (with secure user mode access).
