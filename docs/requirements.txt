@@ -57,6 +57,8 @@ sphinxcontrib-htmlhelp==2.0.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
+sphinxcontrib-moderncmakedomain==3.19
+    # via -r requirements.in
 sphinxcontrib-plantuml==0.21
     # via -r requirements.in
 sphinxcontrib-qthelp==1.0.3

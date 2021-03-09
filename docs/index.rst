@@ -8,6 +8,7 @@ Trusted Firmware-A Documentation
    Home<self>
    about/index
    getting_started/index
+   cmake/index
    process/index
    components/index
    design/index
