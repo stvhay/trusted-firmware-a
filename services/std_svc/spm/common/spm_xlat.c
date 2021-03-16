@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2018-2021, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,14 +8,14 @@
 #include <arch_helpers.h>
 #include <assert.h>
 #include <errno.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <lib/spinlock.h>
 #include <lib/xlat_tables/xlat_tables_v2.h>
 #include <platform_def.h>
 #include <plat/common/platform.h>
-#include <services/spm_mm_partition.h>
-#include <services/spm_mm_svc.h>
 
-#include "spm_mm_private.h"
-#include "spm_mm_shim_private.h"
+#include "spm_common.h"
+#include "spm_shim_private.h"
 
 /* Place translation tables by default along with the ones used by BL31. */
 #ifndef PLAT_SP_IMAGE_XLAT_SECTION_NAME

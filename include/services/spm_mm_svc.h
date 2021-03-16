@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2021, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -65,28 +65,6 @@
 #define MM_SP_EVENT_COMPLETE_AARCH64		U(0xC4000061)
 #define MM_SP_MEMORY_ATTRIBUTES_GET_AARCH64	U(0xC4000064)
 #define MM_SP_MEMORY_ATTRIBUTES_SET_AARCH64	U(0xC4000065)
-
-/*
- * Macros used by MM_SP_MEMORY_ATTRIBUTES_SET_AARCH64.
- */
-
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_NOACCESS	U(0)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_RW	U(1)
-/* Value U(2) is reserved. */
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_RO	U(3)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_MASK	U(3)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_SHIFT	0
-
-#define MM_SP_MEMORY_ATTRIBUTES_EXEC		(U(0) << 2)
-#define MM_SP_MEMORY_ATTRIBUTES_NON_EXEC	(U(1) << 2)
-
-
-/* SPM error codes. */
-#define SPM_MM_SUCCESS		  0
-#define SPM_MM_NOT_SUPPORTED	 -1
-#define SPM_MM_INVALID_PARAMETER -2
-#define SPM_MM_DENIED		 -3
-#define SPM_MM_NO_MEMORY	 -5
 
 #ifndef __ASSEMBLER__
 

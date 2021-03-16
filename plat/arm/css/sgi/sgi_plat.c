@@ -17,7 +17,7 @@
 #include <sgi_base_platform_def.h>
 
 #if SPM_MM
-#include <services/spm_mm_partition.h>
+#include "spm_partition.h"
 #endif
 
 #define SGI_MAP_FLASH0_RO	MAP_REGION_FLAT(V2M_FLASH0_BASE,\

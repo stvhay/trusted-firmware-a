@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2021, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef SPM_MM_PARTITION_H
-#define SPM_MM_PARTITION_H
+#ifndef SPM_PARTITION_H
+#define SPM_PARTITION_H
 
 #include <stdint.h>
 
@@ -47,4 +47,4 @@ typedef struct spm_mm_boot_info {
 	spm_mm_mp_info_t	*mp_info;
 } spm_mm_boot_info_t;
 
-#endif /* SPM_MM_PARTITION_H */
+#endif /* SPM_PARTITION_H */

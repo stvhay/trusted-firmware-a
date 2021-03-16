@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2017-2021, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -11,12 +11,8 @@ ifneq (${ARCH},aarch64)
         $(error "Error: SPM_MM is only supported on aarch64.")
 endif
 
-SPM_SOURCES	:=	$(addprefix services/std_svc/spm_mm/,	\
-			${ARCH}/spm_mm_helpers.S			\
-			${ARCH}/spm_mm_shim_exceptions.S		\
-			spm_mm_main.c				\
-			spm_mm_setup.c				\
-			spm_mm_xlat.c)
+SPM_MM_SOURCES	:=	$(addprefix services/std_svc/spm/spm_mm/,	\
+			spm_mm_main.c)
 
 
 # Let the top-level Makefile know that we intend to include a BL32 image
