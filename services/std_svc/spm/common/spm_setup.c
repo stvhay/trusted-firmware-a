@@ -28,7 +28,7 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	cpu_context_t *ctx = &(sp_ctx->cpu_ctx);
 
 	/* Pointer to the MP information from the platform port. */
-	const spm_mm_boot_info_t *sp_boot_info =
+	const spm_boot_info_t *sp_boot_info =
 			plat_get_secure_partition_boot_info(NULL);
 
 	/*
@@ -199,7 +199,7 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	void *shared_buf_ptr = (void *) sp_boot_info->sp_shared_buf_base;
 
 	/* Copy the boot information into the shared buffer with the SP. */
-	assert((uintptr_t)shared_buf_ptr + sizeof(spm_mm_boot_info_t)
+	assert((uintptr_t)shared_buf_ptr + sizeof(spm_boot_info_t)
 	       <= (sp_boot_info->sp_shared_buf_base + sp_boot_info->sp_shared_buf_size));
 
 	assert(sp_boot_info->sp_shared_buf_base <=
@@ -208,11 +208,11 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	assert(sp_boot_info != NULL);
 
 	memcpy((void *) shared_buf_ptr, (const void *) sp_boot_info,
-	       sizeof(spm_mm_boot_info_t));
+	       sizeof(spm_boot_info_t));
 
 	/* Pointer to the MP information from the platform port. */
-	spm_mm_mp_info_t *sp_mp_info =
-		((spm_mm_boot_info_t *) shared_buf_ptr)->mp_info;
+	spm_mp_info_t *sp_mp_info =
+		((spm_boot_info_t *) shared_buf_ptr)->mp_info;
 
 	assert(sp_mp_info != NULL);
 
@@ -220,15 +220,15 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	 * Point the shared buffer MP information pointer to where the info will
 	 * be populated, just after the boot info.
 	 */
-	((spm_mm_boot_info_t *) shared_buf_ptr)->mp_info =
-		(spm_mm_mp_info_t *) ((uintptr_t)shared_buf_ptr
-				+ sizeof(spm_mm_boot_info_t));
+	((spm_boot_info_t *) shared_buf_ptr)->mp_info =
+		(spm_mp_info_t *) ((uintptr_t)shared_buf_ptr
+				+ sizeof(spm_boot_info_t));
 
 	/*
 	 * Update the shared buffer pointer to where the MP information for the
 	 * payload will be populated
 	 */
-	shared_buf_ptr = ((spm_mm_boot_info_t *) shared_buf_ptr)->mp_info;
+	shared_buf_ptr = ((spm_boot_info_t *) shared_buf_ptr)->mp_info;
 
 	/*
 	 * Copy the cpu information into the shared buffer area after the boot
@@ -247,7 +247,7 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	 * Calculate the linear indices of cores in boot information for the
 	 * secure partition and flag the primary CPU
 	 */
-	sp_mp_info = (spm_mm_mp_info_t *) shared_buf_ptr;
+	sp_mp_info = (spm_mp_info_t *) shared_buf_ptr;
 
 	for (unsigned int index = 0; index < sp_boot_info->num_cpus; index++) {
 		u_register_t mpidr = sp_mp_info[index].mpidr;

@@ -123,12 +123,12 @@ static uint64_t mm_communicate(uint32_t smc_fid, uint64_t mm_cookie,
 	/* Cookie. Reserved for future use. It must be zero. */
 	if (mm_cookie != 0U) {
 		ERROR("MM_COMMUNICATE: cookie is not zero\n");
-		SMC_RET1(handle, SPM_MM_INVALID_PARAMETER);
+		SMC_RET1(handle, SPM_INVALID_PARAMETER);
 	}
 
 	if (comm_buffer_address == 0U) {
 		ERROR("MM_COMMUNICATE: comm_buffer_address is zero\n");
-		SMC_RET1(handle, SPM_MM_INVALID_PARAMETER);
+		SMC_RET1(handle, SPM_INVALID_PARAMETER);
 	}
 
 	if (comm_size_address != 0U) {
@@ -206,7 +206,7 @@ uint64_t spm_mm_smc_handler(uint32_t smc_fid,
 
 			if (sp_ctx.state != SP_STATE_RESET) {
 				WARN("MM_SP_MEMORY_ATTRIBUTES_GET_AARCH64 is available at boot time only\n");
-				SMC_RET1(handle, SPM_MM_NOT_SUPPORTED);
+				SMC_RET1(handle, SPM_NOT_SUPPORTED);
 			}
 			SMC_RET1(handle,
 				 spm_memory_attributes_get_smc_handler(
@@ -217,7 +217,7 @@ uint64_t spm_mm_smc_handler(uint32_t smc_fid,
 
 			if (sp_ctx.state != SP_STATE_RESET) {
 				WARN("MM_SP_MEMORY_ATTRIBUTES_SET_AARCH64 is available at boot time only\n");
-				SMC_RET1(handle, SPM_MM_NOT_SUPPORTED);
+				SMC_RET1(handle, SPM_NOT_SUPPORTED);
 			}
 			SMC_RET1(handle,
 				 spm_memory_attributes_set_smc_handler(
@@ -243,7 +243,7 @@ uint64_t spm_mm_smc_handler(uint32_t smc_fid,
 		case MM_SP_MEMORY_ATTRIBUTES_GET_AARCH64:
 		case MM_SP_MEMORY_ATTRIBUTES_SET_AARCH64:
 			/* SMC interfaces reserved for secure callers. */
-			SMC_RET1(handle, SPM_MM_NOT_SUPPORTED);
+			SMC_RET1(handle, SPM_NOT_SUPPORTED);
 
 		default:
 			break;

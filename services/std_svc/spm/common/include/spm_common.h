@@ -44,23 +44,23 @@
  * Macros used by SP_MEMORY_ATTRIBUTES_SET_AARCH64.
  */
 
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_NOACCESS    U(0)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_RW          U(1)
+#define SP_MEMORY_ATTRIBUTES_ACCESS_NOACCESS    U(0)
+#define SP_MEMORY_ATTRIBUTES_ACCESS_RW          U(1)
 /* Value U(2) is reserved. */
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_RO          U(3)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_MASK        U(3)
-#define MM_SP_MEMORY_ATTRIBUTES_ACCESS_SHIFT       U(0)
+#define SP_MEMORY_ATTRIBUTES_ACCESS_RO          U(3)
+#define SP_MEMORY_ATTRIBUTES_ACCESS_MASK        U(3)
+#define SP_MEMORY_ATTRIBUTES_ACCESS_SHIFT       U(0)
 
-#define MM_SP_MEMORY_ATTRIBUTES_EXEC               (U(0) << 2)
-#define MM_SP_MEMORY_ATTRIBUTES_NON_EXEC           (U(1) << 2)
+#define SP_MEMORY_ATTRIBUTES_EXEC               (U(0) << 2)
+#define SP_MEMORY_ATTRIBUTES_NON_EXEC           (U(1) << 2)
 
 
 /* SPM error codes. */
-#define SPM_MM_SUCCESS		  0
-#define SPM_MM_NOT_SUPPORTED	 -1
-#define SPM_MM_INVALID_PARAMETER -2
-#define SPM_MM_DENIED		 -3
-#define SPM_MM_NO_MEMORY	 -5
+#define SPM_SUCCESS		  0
+#define SPM_NOT_SUPPORTED	 -1
+#define SPM_INVALID_PARAMETER	 -2
+#define SPM_DENIED		 -3
+#define SPM_NO_MEMORY		 -5
 
 typedef enum sp_state {
 	SP_STATE_RESET = 0,
