@@ -208,7 +208,7 @@ void __init arm_bl31_early_platform_setup(void *from_bl2, uintptr_t soc_fw_confi
 	bl33_image_ep_info.args.arg3 = 0U;
 # endif
 
-#if defined(SPD_spmd)
+#if defined(SPD_spmd) && !defined(SPMC_AT_EL3)
 	/*
 	 * Hafnium in normal world expects its manifest address in x0, In CI
 	 * configuration manifest is preloaded at 0x80000000(start of DRAM).
