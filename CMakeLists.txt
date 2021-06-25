@@ -7,6 +7,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 #
+# Ensure our own CMake modules can be loaded.
+#
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
+
+#
 # We're done with very early setup, so we can now create the project. This will
 # do some of the automatic compiler detection, which we need for setting up
 # further configuration options.
