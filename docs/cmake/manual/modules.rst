@@ -33,6 +33,8 @@ system.
     :glob:
     :maxdepth: 1
 
+    module/external/*
+
 Find Modules
 ------------
 
