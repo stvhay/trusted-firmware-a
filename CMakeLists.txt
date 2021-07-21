@@ -14,6 +14,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
 include(ArmConfigOption)
 
+include(TFAMetadata)
+
 #
 # Set up the configuration types for both single and multi-configuration
 # generators.
@@ -42,6 +44,31 @@ else()
         DEFAULT ${default-config}
         FORCE NOT CMAKE_BUILD_TYPE)
 endif()
+
+#
+# Retrieve the list of platforms from the global metadata file and present them
+# to the user.
+#
+
+tfa_platforms(platforms)
+
+arm_assert(
+    CONDITION platforms
+    MESSAGE "No platforms defined!")
+
+arm_config_option(
+    NAME TFA_PLATFORM
+    HELP "Platform to build."
+    STRINGS ${platforms})
+
+tfa_platform_path(TFA_PLATFORM_SOURCE_DIR
+    PLATFORM "${TFA_PLATFORM}")
+
+arm_assert(
+    CONDITION EXISTS "${TFA_PLATFORM_SOURCE_DIR}"
+    MESSAGE "The source directory for the current platform does not exist:\n"
+
+            "${TFA_PLATFORM_SOURCE_DIR}")
 
 #
 # We're done with very early setup, so we can now create the project. This will
