@@ -46,6 +46,58 @@ file(READ "${CMAKE_SOURCE_DIR}/metadata.json" global-metadata)
 arm_expand(OUTPUT global-metadata STRING "${global-metadata}")
 
 #
+# Allow the user to provide their own platform list metadata. This allows
+# developers to use out-of-tree platforms (platforms that live outside of this
+# repository). The platforms list given by this file is superimposed onto the
+# global metadata file.
+#
+
+arm_config_option(
+    NAME TFA_METADATA_PLATFORMS_PATH ADVANCED
+    HELP "Path to an alternative platforms metadata file."
+    TYPE FILEPATH)
+
+if(TFA_METADATA_PLATFORMS_PATH)
+    cmake_path(GET TFA_METADATA_PLATFORMS_PATH
+        PARENT_PATH TFA_METADATA_PLATFORMS_DIR)
+
+    arm_assert(
+        CONDITION EXISTS "${TFA_METADATA_PLATFORMS_PATH}"
+        MESSAGE "The path to the platforms metadata file "
+                "(`TFA_METADATA_PLATFORMS_PATH`) does not exist:\n"
+
+                "${TFA_METADATA_PLATFORMS_PATH}")
+
+    file(READ "${TFA_METADATA_PLATFORMS_PATH}" platforms-metadata)
+    arm_expand(OUTPUT platforms-metadata STRING "${platforms-metadata}")
+
+    tfa_json_get(platforms JSON "${platforms-metadata}" DECODE MEMBERS)
+
+    foreach(platform IN LISTS platforms)
+        #
+        # Fix up relative paths in the platforms metadata JSON file so that any
+        # relative paths are relative to the metadata file, rather than to the
+        # current source directory.
+        #
+
+        tfa_json_get(platform-path JSON "${platforms-metadata}"
+            PATH "${platform}" DECODE STRING)
+
+        cmake_path(ABSOLUTE_PATH platform-path
+            BASE_DIRECTORY "${TFA_METADATA_PLATFORMS_DIR}")
+
+        tfa_json_encode_string(platform-path "${platform-path}")
+        string(JSON platforms-metadata SET "${platforms-metadata}"
+            "${platform}" "${platform-path}")
+    endforeach()
+
+    tfa_json_merge(global-metadata
+        BOTTOM "${global-metadata}"
+        BOTTOM_PATH "platforms"
+        TOP "${platforms-metadata}")
+endif()
+
+#
 # Internal global metadata API.
 #
 
