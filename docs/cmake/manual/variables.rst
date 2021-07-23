@@ -22,6 +22,8 @@ manual.
     :glob:
     :maxdepth: 1
 
+    variable/intrinsic/*
+
 Common Variables
 ----------------
 
