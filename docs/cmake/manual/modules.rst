@@ -23,6 +23,8 @@ Modules specific to the Trusted Firmware-A build system.
     :glob:
     :maxdepth: 1
 
+    module/internal/*
+
 External Modules
 ^^^^^^^^^^^^^^^^
 
