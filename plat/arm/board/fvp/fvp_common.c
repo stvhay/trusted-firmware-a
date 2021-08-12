@@ -117,7 +117,7 @@ const mmap_region_t plat_arm_mmap[] = {
 	ARM_MAP_BL1_RW,
 #endif
 #endif /* TRUSTED_BOARD_BOOT */
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 	ARM_SP_IMAGE_MMAP,
 #endif
 #if ARM_BL31_IN_DRAM
@@ -154,7 +154,7 @@ const mmap_region_t plat_arm_mmap[] = {
 	MAP_DEVICE1,
 #endif /* FVP_GICR_REGION_PROTECTION */
 	ARM_V2M_MAP_MEM_PROTECT,
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 	ARM_SPM_BUF_EL3_MMAP,
 #endif
 	/* Required by fconf APIs to read HW_CONFIG dtb loaded into DRAM */
