@@ -100,4 +100,14 @@ typedef struct spmc_sp_context {
 
 } spmc_sp_context_t;
 
+/**
+ * Holds information returned for each partition by the FFA_PARTITION_INFO_GET
+ * interface.
+ */
+struct ffa_partition_info {
+	uint16_t vm_id;
+	uint16_t execution_ctx_count;
+	uint32_t properties;
+};
+
 #endif /* SPMC_H */

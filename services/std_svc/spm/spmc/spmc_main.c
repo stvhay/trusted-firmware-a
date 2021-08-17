@@ -501,6 +501,72 @@ static uint64_t spmc_smc_return(uint32_t smc_fid,
 	return 0;
 }
 
+/*******************************************************************************
+ * FFA ABI Handlers
+ ******************************************************************************/
+
+bool compare_uuid(uint32_t *uuid1, uint32_t *uuid2) {
+	return !memcmp(uuid1, uuid2, sizeof(uint32_t) * 4);
+}
+
+static uint64_t partition_info_get_handler(uint32_t smc_fid,
+		bool secure_origin,
+		uint64_t x1, uint64_t x2, uint64_t x3, uint64_t x4,
+		void *cookie, void *handle, uint64_t flags)
+{
+	int index, partition_count;
+	struct ffa_partition_info *info;
+	el3_lp_desc_t *el3_lp_descs = get_el3_lp_array();
+
+	uint32_t uuid[4];
+	uuid[0] = x1;
+	uuid[1] = x2;
+	uuid[2] = x3;
+	uuid[3] = x4;
+
+	spmc_sp_context_t *ctx = spmc_get_current_ctx(flags);
+	info = (struct ffa_partition_info *) ctx->mailbox.rx_buffer;
+
+	spin_lock(&ctx->mailbox.lock);
+	if (ctx->mailbox.state != MAILBOX_STATE_EMPTY) {
+		return spmc_ffa_error_return(handle, FFA_ERROR_BUSY);
+	}
+	ctx->mailbox.state = MAILBOX_STATE_FULL;
+	spin_unlock(&ctx->mailbox.lock);
+
+	partition_count = 0;
+	/* Deal with Logical Partitions. */
+	for (index = 0; index < EL3_LP_DESCS_NUM; index++) {
+		if (compare_uuid(uuid, el3_lp_descs[index].uuid) ||
+			(uuid[0] == 0 && uuid[1] == 0 && uuid[2] == 0 && uuid[3] == 0)) {
+			/* Found a matching UUID, populate appropriately. */
+			info[partition_count].vm_id = el3_lp_descs[index].sp_id;
+			info[partition_count].execution_ctx_count = PLATFORM_CORE_COUNT;
+			info[partition_count].properties = el3_lp_descs[index].properties;
+			partition_count++;
+		}
+	}
+
+	/* Deal with physical SP's. */
+	for(index = 0; index < SECURE_PARTITION_COUNT; index++){
+		if (compare_uuid(uuid, spmc_sp_ctx[index].uuid) ||
+			(uuid[0] == 0 && uuid[1] == 0 && uuid[2] == 0 && uuid[3] == 0)) {
+			/* Found a matching UUID, populate appropriately. */
+			info[partition_count].vm_id = spmc_sp_ctx[index].sp_id;
+			info[partition_count].execution_ctx_count = spmc_sp_ctx[index].execution_ctx_count;
+			info[partition_count].properties = spmc_sp_ctx[index].properties;
+			partition_count++;
+		}
+	}
+
+	if (partition_count == 0) {
+		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+	}
+
+	SMC_RET3(handle, FFA_SUCCESS_SMC32, 0, partition_count);
+}
+
+
 static uint64_t direct_req_smc_handler(uint32_t smc_fid,
 					   bool secure_origin,
 					   uint64_t x1,
@@ -632,10 +698,11 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 	case FFA_MSG_SEND_DIRECT_REQ_SMC64:
 		return direct_req_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
-
 	case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 		return direct_resp_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
+	case FFA_PARTITION_INFO_GET:
+		return partition_info_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	default:
 		WARN("Not Supported 0x%x FFA Request ID\n", smc_fid);
 		break;
