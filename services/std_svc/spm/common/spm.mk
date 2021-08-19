@@ -15,7 +15,8 @@ SPM_SOURCES	:=	$(addprefix services/std_svc/spm/common/,\
 			${ARCH}/spm_shim_exceptions.S		\
 			spm_common.c				\
 			spm_setup.c				\
-			spm_xlat.c)
+			spm_xlat.c				\
+			logical_sp_test.c)
 			# logical_mm_sp.c)
 
 
