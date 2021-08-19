@@ -31,7 +31,7 @@
 static sp_context_t sp_ctx;
 
 /*******************************************************************************
- * Jump to each Secure Partition for the first time.
+ * Jump to each MM Secure Partition for the first time.
  ******************************************************************************/
 static int32_t spm_init(void)
 {
@@ -55,7 +55,7 @@ static int32_t spm_init(void)
 }
 
 /*******************************************************************************
- * Initialize contexts of all Secure Partitions.
+ * Initialize contexts of all MM Secure Partitions.
  ******************************************************************************/
 int32_t spm_mm_setup(void)
 {
@@ -144,7 +144,7 @@ int32_t spm_mm_setup(void)
 	mmap_add_ctx(ctx->xlat_ctx_handle,
 		     plat_get_secure_partition_mmap(NULL));
 
-	spm_sp_setup(ctx);
+	spm_el0_sp_setup(ctx);
 
 	/*
 	 * Prepare information in buffer shared between EL3 and S-EL0
@@ -221,7 +221,7 @@ int32_t spm_mm_setup(void)
 }
 
 /*******************************************************************************
- * Function to perform a call to a Secure Partition.
+ * Function to perform a call to a MM Secure Partition.
  ******************************************************************************/
 uint64_t spm_mm_sp_call(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3)
 {
@@ -306,7 +306,7 @@ static uint64_t mm_communicate(uint32_t smc_fid, uint64_t mm_cookie,
 }
 
 /*******************************************************************************
- * Secure Partition Manager SMC handler.
+ * MM Secure Partition Manager SMC handler.
  ******************************************************************************/
 uint64_t spm_mm_smc_handler(uint32_t smc_fid,
 			 uint64_t x1,

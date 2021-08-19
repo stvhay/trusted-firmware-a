@@ -389,7 +389,8 @@ static int find_and_prepare_sp_context(void)
 		ERROR("Error happened in SP manifest reading.\n");
 		return -EINVAL;
 	} else {
-		sp_context_t *sp_ctx = &(spmc_sp_ctx[next_available_sp_index].sp_ctx);
+		spmc_sp_context_t *ctx = &(spmc_sp_ctx[next_available_sp_index]);
+		sp_context_t *sp_ctx = &(ctx->sp_ctx);
 		cpu_context_t *cpu_ctx = &(sp_ctx->cpu_ctx);
 
 		/* Assign translation tables context. */
@@ -414,7 +415,21 @@ static int find_and_prepare_sp_context(void)
 				sp_ctx->sp_stack_base + sp_ctx->sp_pcpu_stack_size);
 
 		schedule_sp_index = next_available_sp_index;
-		spm_sp_setup(sp_ctx);
+
+
+	/* TODO: Perform any common initialisation? */
+	spm_sp_common_setup(sp_ctx);
+
+	/* Call the appropriate initalisation function depending on partition type. */
+	if (ctx->runtime_el == EL0) {
+		spm_el0_sp_setup(sp_ctx);
+	}
+	else if (ctx->runtime_el == EL1) {
+		spm_el1_sp_setup(sp_ctx);
+	}
+	else {
+		ERROR("Unexpected runtime EL: %d\n", ctx->runtime_el);
+	}
 		next_available_sp_index++;
 	}
 

@@ -83,7 +83,10 @@ typedef struct sp_context {
 uint64_t spm_secure_partition_enter(uint64_t *c_rt_ctx);
 void __dead2 spm_secure_partition_exit(uint64_t c_rt_ctx, uint64_t ret);
 
-void spm_sp_setup(sp_context_t *sp_ctx);
+/* Setup Function for different SP types. */
+void spm_sp_common_setup(sp_context_t *sp_ctx);
+void spm_el0_sp_setup(sp_context_t *sp_ctx);
+void spm_el1_sp_setup(sp_context_t *sp_ctx);
 
 xlat_ctx_t *spm_get_sp_xlat_context(void);
 

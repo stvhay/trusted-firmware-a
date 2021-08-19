@@ -22,8 +22,9 @@
 #include "spm_partition.h"
 #include "spm_shim_private.h"
 
-/* Setup context of the Secure Partition */
-void spm_sp_setup(sp_context_t *sp_ctx)
+/* TODO: What is/is not common to any EL0 partition? */
+/* Setup context of a EL0 MM Secure Partition */
+void spm_el0_sp_setup(sp_context_t *sp_ctx)
 {
 	cpu_context_t *ctx = &(sp_ctx->cpu_ctx);
 
@@ -110,5 +111,18 @@ void spm_sp_setup(sp_context_t *sp_ctx)
 	 */
 	write_ctx_reg(get_el1_sysregs_ctx(ctx), CTX_CPACR_EL1,
 			CPACR_EL1_FPEN(CPACR_EL1_FP_TRAP_NONE));
+
+}
+
+
+/* TODO: Split out common functionality to boot an SP. */
+void spm_sp_common_setup(sp_context_t *sp_ctx) {
+
+}
+
+/* TODO: SEL1 partition specific initialisation. */
+void spm_el1_sp_setup(sp_context_t *sp_ctx)
+{
+	/* TODO: Populate with EL1 specific initialisation. */
 
 }
