@@ -29,6 +29,7 @@ void *spmc_get_config_addr(void);
 void spmc_set_config_addr(uintptr_t soc_fw_config);
 
 uint64_t spmc_smc_handler(uint32_t smc_fid,
+			  bool secure_origin,
 			  uint64_t x1,
 			  uint64_t x2,
 			  uint64_t x3,

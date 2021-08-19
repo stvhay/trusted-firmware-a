@@ -22,4 +22,16 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 			  uint64_t flags);
 #endif /* __ASSEMBLER__ */
 
+/* Function declarations. */
+
+uint64_t spm_smc_forward(uint32_t smc_fid,
+				 bool secure_origin,
+				 uint64_t x1,
+				 uint64_t x2,
+				 uint64_t x3,
+				 uint64_t x4,
+				 void *handle,
+				 void *cookie,
+				 uint64_t flags);
+
 #endif /* SPMD_SVC_H */
