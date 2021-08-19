@@ -7,6 +7,8 @@
 #ifndef FFA_SVC_H
 #define FFA_SVC_H
 
+#include <stdbool.h>
+
 #include <lib/smccc.h>
 #include <lib/utils_def.h>
 #include <tools_share/uuid.h>
@@ -52,6 +54,15 @@
 #define FFA_MSG_SEND_ATTRS(blk)		\
 	(((blk) & FFA_MSG_SEND_ATTRS_BLK_MASK) \
 	<< FFA_MSG_SEND_ATTRS_BLK_SHIFT)
+
+
+/* FFA_RELATED helper macros */
+#define FFA_PARTITION_ID_MASK 0xFFFF
+#define FFA_SENDER(src_dst_ids) \
+		((src_dst_ids >> 16) & FFA_PARTITION_ID_MASK)
+#define FFA_RECEIVER(src_dst_ids) \
+		(src_dst_ids & FFA_PARTITION_ID_MASK)
+
 
 /* Get FFA fastcall std FID from function number */
 #define FFA_FID(smc_cc, func_num)			\
@@ -162,6 +173,11 @@
 #define FFA_ENDPOINT_ID_MAX			U(1 << 16)
 
 /*
+ * FFA Mask for the normal world.
+ */
+#define FFA_SECURE_WORLD_ID_MASK	U(0x8000)
+
+/*
  * Mask for source and destination endpoint id in
  * a direct message request/response.
  */
@@ -193,6 +209,24 @@ static inline uint16_t ffa_endpoint_source(unsigned int ep)
 {
 	return (ep >> FFA_DIRECT_MSG_SOURCE_SHIFT) &
 		FFA_DIRECT_MSG_ENDPOINT_ID_MASK;
+}
+
+/******************************************************************************
+ * ffa helper functions to determine partition ID world
+ *****************************************************************************/
+
+/*
+ * Determine if provided ID is in the secure world.
+ */
+static inline bool ffa_is_secure_world_id(uint16_t id) {
+	return id & FFA_SECURE_WORLD_ID_MASK;
+}
+
+/*
+ * Determine if provided ID is in the normal world.
+ */
+static inline bool ffa_is_normal_world_id(uint16_t id) {
+	return !ffa_is_secure_world_id(id);
 }
 
 #endif /* FFA_SVC_H */
