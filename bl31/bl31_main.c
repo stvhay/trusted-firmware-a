@@ -16,6 +16,7 @@
 #include <common/debug.h>
 #include <common/runtime_svc.h>
 #include <drivers/console.h>
+#include <services/logical_sp.h>
 #include <lib/el3_runtime/context_mgmt.h>
 #include <lib/pmf/pmf.h>
 #include <lib/runtime_instr.h>
@@ -127,6 +128,12 @@ void bl31_main(void)
 	/* Initialize the runtime services e.g. psci. */
 	INFO("BL31: Initializing runtime services\n");
 	runtime_svc_init();
+
+#if SPMC_AT_EL3
+	/* Initialize logical partition registration. */
+	INFO("BL31: Initializing logical partition structures\n");
+	el3_sp_desc_init();
+#endif
 
 	/*
 	 * All the cold boot actions on the primary cpu are done. We now need to

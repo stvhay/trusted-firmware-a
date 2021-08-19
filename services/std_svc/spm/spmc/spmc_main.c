@@ -21,6 +21,12 @@
 #include <plat/common/platform.h>
 #include <services/ffa_svc.h>
 #include <services/spmc_svc.h>
+#include <services/spmd_svc.h>
+#include <services/logical_sp.h>
+
+
+#include <plat/arm/common/plat_arm.h>
+#include <platform_def.h>
 
 #include "spmc.h"
 #include "spm_shim_private.h"
@@ -334,6 +340,25 @@ static int find_and_prepare_sp_context(void)
 	return 0;
 }
 
+
+static int32_t logical_sp_init(void)
+{
+	uint64_t rc = 0;
+
+	el3_lp_desc_t *el3_lp_descs;
+	el3_lp_descs = get_el3_lp_array();
+
+	INFO("Logical Secure Partition init start.\n");
+	/* TODO: do some initialistion. */
+	for (int i = 0; i < EL3_LP_DESCS_NUM; i++) {
+		el3_lp_descs[i].init();
+	}
+
+	INFO("Secure Partition initialized.\n");
+
+	return rc;
+}
+
 static int32_t sp_init(void)
 {
 	uint64_t rc;
@@ -354,6 +379,47 @@ static int32_t sp_init(void)
 	return !rc;
 }
 
+
+/*******************************************************************************
+ * This function returns either forwards the request to the other world or returns
+ * with an ERET depending on the source of the call.
+ * Assuming if call is for a logical SP it has already been taken care of.
+ ******************************************************************************/
+
+static uint64_t spmc_smc_return(uint32_t smc_fid,
+ 				 bool secure_origin,
+				 uint64_t x1,
+				 uint64_t x2,
+				 uint64_t x3,
+				 uint64_t x4,
+				 void *handle,
+				 void *cookie,
+				 uint64_t flags) {
+
+	unsigned int cs;
+
+	cs = is_caller_secure(flags);
+
+	/* If the destination is in the normal world always go via the SPMD. */
+	if (ffa_is_normal_world_id(FFA_RECEIVER(x1))) {
+		return spmd_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle, flags);
+	}
+	/* If the caller is secure and we want to return to the secure world, ERET directly. */
+	else if (cs && ffa_is_secure_world_id(FFA_RECEIVER(x1))) {
+		SMC_RET5(handle, smc_fid, x1, x2, x3, x4);
+	}
+	/* If we originated in the normal world then switch contexts. */
+	else if (!cs && ffa_is_secure_world_id(FFA_RECEIVER(x1))) {
+		return ffa_smc_forward(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+	}
+	else {
+		/* Unknown State. */
+		panic();
+	}
+	/* Shouldn't be Reached */
+	return 0;
+}
+
 static uint64_t direct_req_smc_handler(uint32_t smc_fid,
 					   bool secure_origin,
 					   uint64_t x1,
@@ -364,17 +430,16 @@ static uint64_t direct_req_smc_handler(uint32_t smc_fid,
 				       void *handle,
 				       uint64_t flags)
 {
-	unsigned int ns;
 
-	ns = is_caller_non_secure(flags);
-	if (ns == SMC_FROM_SECURE) {
-		assert(handle == cm_get_context(SECURE));
-		return direct_req_secure_smc_handler(x1, x2, x3, x4, cookie,
-						     handle, flags);
-	} else {
-		assert(handle == cm_get_context(NON_SECURE));
-		return direct_req_non_secure_smc_handler(x1, x2, x3, x4, cookie,
-							 handle, flags);
+	el3_lp_desc_t *el3_lp_descs;
+	el3_lp_descs = get_el3_lp_array();
+
+	/* Handle is destined for a Logical Partition. */
+	uint16_t dst_id = FFA_RECEIVER(x1);
+	for (int i = 0; i < MAX_EL3_LP_DESCS_COUNT; i++) {
+		if (el3_lp_descs[i].sp_id == dst_id) {
+			return el3_lp_descs[i].direct_req(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+		}
 	}
 	return spmc_smc_return(smc_fid, secure_origin, x1, x2, x3, x4, handle, cookie, flags);
 }
@@ -413,6 +478,11 @@ void *spmc_get_config_addr(void)
 int32_t spmc_setup(void)
 {
 	int32_t ret;
+
+	/* Setup logical SPs. */
+	logical_sp_init();
+
+	/* Perform physical SP setup. */
 
 	/* Disable MMU at EL1 (initialized by BL2) */
 	disable_mmu_icache_el1();
@@ -454,7 +524,6 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 
 	case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 		return direct_resp_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
-		// spm_sp_synchronous_exit(&(spmc_sp_ctx[schedule_sp_index].sp_ctx), x4);
 
 	default:
 		WARN("Not Supported 0x%x FFA Request ID\n", smc_fid);

@@ -39,6 +39,16 @@
 	KEEP(*(rt_svc_descs))				\
 	__RT_SVC_DESCS_END__ = .;
 
+#if SPMC_AT_EL3
+#define EL3_LP_DESCS					\
+	. = ALIGN(STRUCT_ALIGN);			\
+	__EL3_LP_DESCS_START__ = .;			\
+	KEEP(*(el3_lp_descs))				\
+	__EL3_LP_DESCS_END__ = .;
+#else
+#define EL3_LP_DESCS
+#endif
+
 #define PMF_SVC_DESCS					\
 	. = ALIGN(STRUCT_ALIGN);			\
 	__PMF_SVC_DESCS_START__ = .;			\
@@ -80,6 +90,7 @@
 #define BASE_XLAT_TABLE_BSS		BASE_XLAT_TABLE
 #endif
 
+
 #define RODATA_COMMON					\
 	RT_SVC_DESCS					\
 	FCONF_POPULATOR					\
@@ -87,7 +98,8 @@
 	PARSER_LIB_DESCS				\
 	CPU_OPS						\
 	GOT						\
-	BASE_XLAT_TABLE_RO
+	BASE_XLAT_TABLE_RO		\
+	EL3_LP_DESCS
 
 /*
  * .data must be placed at a lower address than the stacks if the stack

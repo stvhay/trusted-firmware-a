@@ -31,6 +31,7 @@ ifeq (${SPMC_AT_EL3},1)
     include services/std_svc/spm/common/spm.mk
     include services/std_svc/spm/spmc/spmc.mk
   endif
+	BL31_SOURCES		+=	common/logical_sp.c
 endif
 
 include lib/psci/psci_lib.mk
