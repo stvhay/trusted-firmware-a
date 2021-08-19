@@ -18,9 +18,16 @@
  */
 #define  STMM_SP_ID	(0x1)
 
+enum runtime_el {
+	EL0,
+	EL1,
+	EL2,
+	EL3
+};
+
 typedef struct spmc_sp_context {
 	/*
-	 * Secure parition context
+	 * Secure partition context
 	 */
 	sp_context_t sp_ctx;
 
@@ -28,6 +35,11 @@ typedef struct spmc_sp_context {
 	 * ID of the Secure Partition
 	 */
 	uint16_t sp_id;
+
+	/*
+	 * Runtime EL
+	 */
+	uint16_t runtime_el;
 
 } spmc_sp_context_t;
 

@@ -223,6 +223,7 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 		if (ret)
 			WARN("Missing SP Runtime EL information.\n");
 		else {
+			spmc_sp_ctx[next_available_sp_index].runtime_el = config_32;
 			if (config_32 == 0) {
 				/* Setup Secure Partition SPSR */
 				ep_info->spsr =
