@@ -379,16 +379,16 @@ int spmd_setup(void)
 }
 
 /*******************************************************************************
- * Forward SMC to the other security state
+ * Forward FFA SMCs to the other security state
  ******************************************************************************/
-static uint64_t spmd_smc_forward(uint32_t smc_fid,
+uint64_t ffa_smc_forward(uint32_t smc_fid,
 				 bool secure_origin,
 				 uint64_t x1,
 				 uint64_t x2,
 				 uint64_t x3,
 				 uint64_t x4,
-				 void *handle,
 				 void *cookie,
+				 void *handle,
 				 uint64_t flags)
 {
 	if (is_spmc_at_el3()) {
@@ -424,6 +424,28 @@ static uint64_t spmd_smc_forward(uint32_t smc_fid,
 			SMC_GET_GP(handle, CTX_GPREG_X5),
 			SMC_GET_GP(handle, CTX_GPREG_X6),
 			SMC_GET_GP(handle, CTX_GPREG_X7));
+}
+
+/*******************************************************************************
+ * Forward FFA SMC to the other security state
+ ******************************************************************************/
+static uint64_t spmd_smc_forward(uint32_t smc_fid,
+				 bool secure_origin,
+				 uint64_t x1,
+				 uint64_t x2,
+				 uint64_t x3,
+				 uint64_t x4,
+				 void *handle,
+				 void *cookie,
+				 uint64_t flags)
+{
+#if (SPMC_AT_EL3)
+	if (!secure_origin) {
+		return spmc_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+	}
+#endif
+	return ffa_smc_forward(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
 }
 
 /*******************************************************************************
