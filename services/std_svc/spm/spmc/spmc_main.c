@@ -306,7 +306,7 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 		else {
 			ctx->runtime_el = config_32;
 			if (config_32 == 0) {
-				/* Setup Secure Partition SPSR */
+				/* Setup Secure Partition SPSR for S-EL0*/
 				ep_info->spsr =
 					SPSR_64(MODE_EL0, MODE_SP_EL0,
 						DISABLE_ALL_EXCEPTIONS);
@@ -323,6 +323,14 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 							MT_CODE | MT_SECURE | MT_PRIVILEGED);
 				mmap_add_region_ctx(sp_ctx->xlat_ctx_handle,
 						    &sel1_exception_vectors);
+			}
+			else if (config_32 == 1) {
+				/* Setup Secure Partition SPSR for S-EL1 */
+				ep_info->spsr =
+					SPSR_64(MODE_EL1, MODE_SP_ELX,
+						DISABLE_ALL_EXCEPTIONS);
+				sp_ctx->xlat_ctx_handle->xlat_regime =
+								EL1_EL0_REGIME;
 			}
 		}
 	}
