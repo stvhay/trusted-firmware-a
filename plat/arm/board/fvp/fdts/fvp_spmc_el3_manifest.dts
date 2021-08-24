@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2020-2021, Arm Limited. All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+/dts-v1/;
+
+#define	AFF	00
+
+#include <dt-bindings/memory/memory.h>
+
+#include "fvp-defs.dtsi"
+#undef POST
+#define	POST \
+	};
+
+#define MODE_EL0	(0x0)
+#define MODE_EL1	(0x1)
+#define MODE_EL2	(0x2)
+#define MODE_EL3	(0x3)
+
+/ {
+	compatible = "arm,ffa-manifest";
+	#address-cells = <2>;
+	#size-cells = <1>;
+
+	/* For consumption by EL3 SPMC. */
+	ffa-config {
+		compatible = "ffa-configs";
+		ffa-version = <0x00010000>; /* 31:16 - Major, 15:0 - Minor */
+		partition_id = <0x8001>;
+		load_address = <0x0 0xff200000>;
+		uuid = "00000000-0000-0000-0000-000000000011";
+		runtime-el = <MODE_EL1>;
+		execution-state = <0>;
+		execution-ctx-count = <1>;
+		/* Optionally provide arguments to SP.
+		 * sp_arg0 = <0x0>;
+		 * sp_arg1 = <0x0>;
+		 * sp_arg2 = <0x0>;
+		 * sp_arg3 = <0x0>;
+		 */
+	};
+};
