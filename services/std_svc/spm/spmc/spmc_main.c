@@ -466,17 +466,19 @@ static int32_t logical_sp_init(void)
 static int32_t sp_init(void)
 {
 	uint64_t rc;
-	sp_context_t *ctx;
+	spmc_sp_context_t *ctx;
+	sp_context_t *sp_ctx;
 
-	INFO("Secure Partition init start.\n");
+	ctx = &(spmc_sp_ctx[schedule_sp_index]);
+	sp_ctx = &(ctx->sp_ctx);
+	sp_ctx->state = SP_STATE_RESET;
 
-	ctx = &(spmc_sp_ctx[schedule_sp_index].sp_ctx);
-	ctx->state = SP_STATE_RESET;
+	INFO("Secure Partition (0x%x) init start.\n", ctx->sp_id);
 
-	rc = spm_sp_synchronous_entry(ctx);
+	rc = spm_sp_synchronous_entry(sp_ctx);
 	assert(rc == 0);
 
-	ctx->state = SP_STATE_IDLE;
+	sp_ctx->state = SP_STATE_IDLE;
 
 	INFO("Secure Partition initialized.\n");
 
