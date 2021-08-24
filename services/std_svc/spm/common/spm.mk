@@ -16,6 +16,7 @@ SPM_SOURCES	:=	$(addprefix services/std_svc/spm/common/,\
 			spm_common.c				\
 			spm_setup.c				\
 			spm_xlat.c)
+			# logical_mm_sp.c)
 
 
 # Let the top-level Makefile know that we intend to include a BL32 image
