@@ -77,6 +77,27 @@ typedef struct spmc_sp_context {
 	 */
 	uint32_t uuid[4];
 
+	/*
+	 * Partition Properties
+	 */
+	uint32_t properties;
+
+	/*
+	 * Number of Execution Contexts.
+	 */
+	uint16_t execution_ctx_count;
+
+	/*
+	 * Supported FFA Version
+	 */
+	uint32_t ffa_version;
+
+	/*
+	 * Execution State
+	 */
+	uint32_t exception_state;
+
+
 } spmc_sp_context_t;
 
 #endif /* SPMC_H */

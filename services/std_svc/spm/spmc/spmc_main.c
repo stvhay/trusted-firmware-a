@@ -177,6 +177,7 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 			     entry_point_info_t *ep_info)
 {
 	int32_t ret, node;
+	spmc_sp_context_t *ctx = &(spmc_sp_ctx[next_available_sp_index]);
 
 	node = fdt_subnode_offset_namelen(sp_manifest, offset,
 					  "ffa-config",
@@ -192,7 +193,7 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 		if (ret)
 			WARN("Missing Secure Partition ID.\n");
 		else
-			spmc_sp_ctx[next_available_sp_index].sp_id = config_32;
+			ctx->sp_id = config_32;
 
 		ret = fdt_read_uint64(sp_manifest, node,
 				      "sp_arg0", &config);
@@ -250,15 +251,36 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 			WARN("Missing Secure Partition UUID.\n");
 		else {
 			/* Convert from BE to LE to store internally. */
-			convert_uuid_endian(be_uuid, spmc_sp_ctx[next_available_sp_index].uuid);
+			convert_uuid_endian(be_uuid, ctx->uuid);
 		}
+
+		ret = fdt_read_uint32(sp_manifest, node,
+				      "execution-ctx-count", &config_32);
+		if (ret)
+			WARN("Missing Secure Partition Execution Context Count.\n");
+		else
+			ctx->execution_ctx_count = config_32;
+
+		ret = fdt_read_uint32(sp_manifest, node,
+				      "ffa-version", &config_32);
+		if (ret)
+			WARN("Missing Secure Partition FFA Version.\n");
+		else
+			ctx->ffa_version = config_32;
+
+		ret = fdt_read_uint32(sp_manifest, node,
+				      "execution-state", &config_32);
+		if (ret)
+			WARN("Missing Secure Partition Execution State.\n");
+		else
+			ctx->ffa_version = config_32;
 
 		ret = fdt_read_uint32(sp_manifest, node,
 				      "runtime-el", &config_32);
 		if (ret)
 			WARN("Missing SP Runtime EL information.\n");
 		else {
-			spmc_sp_ctx[next_available_sp_index].runtime_el = config_32;
+			ctx->runtime_el = config_32;
 			if (config_32 == 0) {
 				/* Setup Secure Partition SPSR */
 				ep_info->spsr =
