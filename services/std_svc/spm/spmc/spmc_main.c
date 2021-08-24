@@ -46,6 +46,17 @@ el3_lp_desc_t* get_el3_lp_array(void) {
 
 
 /*******************************************************************************
+ * Return FFA_ERROR with specified error code
+ ******************************************************************************/
+static uint64_t spmc_ffa_error_return(void *handle, int error_code)
+{
+	SMC_RET8(handle, FFA_ERROR,
+		 FFA_TARGET_INFO_MBZ, error_code,
+		 FFA_PARAM_MBZ, FFA_PARAM_MBZ, FFA_PARAM_MBZ,
+		 FFA_PARAM_MBZ, FFA_PARAM_MBZ);
+}
+
+/*******************************************************************************
  * This function will parse the Secure Partition Manifest for fetching seccure
  * partition specific memory region details. It will find base address, size,
  * memory attributes for each memory region and then add the respective region
