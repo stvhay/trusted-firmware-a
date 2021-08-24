@@ -140,6 +140,20 @@ static void populate_sp_mem_regions(sp_context_t *sp_ctx,
 	}
 }
 
+/*
+ * Convert from the traditional TF-A representation of a UUID,
+ * big endian uint8 to little endian uint32 to be inline
+ * with FF-A.
+ */
+void convert_uuid_endian(uint8_t *be_8, uint32_t *le_32) {
+	for (int i = 0; i < 4; i++){
+		le_32[i] = be_8[(i*4)+0] << 24 |
+				   be_8[(i*4)+1] << 16 |
+				   be_8[(i*4)+2] << 8  |
+				   be_8[(i*4)+3] << 0;
+	}
+}
+
 /*******************************************************************************
  * This function will parse the Secure Partition Manifest. From manifest, it
  * will fetch details for preparing Secure partition image context and secure
@@ -217,6 +231,16 @@ static int sp_manifest_parse(void *sp_manifest, int offset,
 			WARN("Missing Secure Partition Stack Size.\n");
 		else
 			sp_ctx->sp_pcpu_stack_size = config;
+
+		uint8_t be_uuid[16];
+		ret = fdtw_read_uuid(sp_manifest, node, "uuid", 16,
+				     be_uuid);
+		if (ret)
+			WARN("Missing Secure Partition UUID.\n");
+		else {
+			/* Convert from BE to LE to store internally. */
+			convert_uuid_endian(be_uuid, spmc_sp_ctx[next_available_sp_index].uuid);
+		}
 
 		ret = fdt_read_uint32(sp_manifest, node,
 				      "runtime-el", &config_32);

@@ -72,6 +72,11 @@ typedef struct spmc_sp_context {
 	 */
 	struct mailbox mailbox;
 
+	/*
+	 * Partition UUID
+	 */
+	uint32_t uuid[4];
+
 } spmc_sp_context_t;
 
 #endif /* SPMC_H */
