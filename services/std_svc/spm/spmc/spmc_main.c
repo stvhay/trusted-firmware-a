@@ -726,6 +726,16 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 
 	case FFA_PARTITION_INFO_GET:
 		return partition_info_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MSG_WAIT:
+		/* Check if SP init call. */
+		if (secure_origin && spmc_sp_ctx[schedule_sp_index].sp_ctx.state == SP_STATE_RESET) {
+			spm_sp_synchronous_exit(&(spmc_sp_ctx[schedule_sp_index].sp_ctx), x4);
+		}
+		/* TODO: Validate this is a valid call in partitions current state. */
+		/* Else forward to SPMD. */
+		return spmd_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle, flags);
+
 	default:
 		WARN("Not Supported 0x%x FFA Request ID\n", smc_fid);
 		break;
