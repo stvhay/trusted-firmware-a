@@ -69,6 +69,23 @@ spmc_sp_context_t* spmc_get_current_ctx(uint64_t flags) {
 	}
 }
 
+/* Helper function to get pointer to SP context from it's ID. */
+spmc_sp_context_t* spmc_get_sp_ctx(uint16_t id) {
+	/* Check for Swld Partitions. */
+	for (int i = 0; i < SECURE_PARTITION_COUNT; i++) {
+		if (spmc_sp_ctx[i].sp_id == id) {
+			return &(spmc_sp_ctx[i]);
+		}
+	}
+	/* Check for Nwld partitions. */
+	for (int i = 0; i < NWLD_PARTITION_COUNT; i++) {
+		if (spmc_nwld_ctx[i].sp_id == id) {
+			return &(spmc_nwld_ctx[i]);
+		}
+	}
+	return NULL;
+}
+
 /*******************************************************************************
  * Return FFA_ERROR with specified error code
  ******************************************************************************/
