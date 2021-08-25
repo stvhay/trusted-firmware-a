@@ -31,9 +31,20 @@
 #include "spmc.h"
 #include "spm_shim_private.h"
 
+#define NWLD_CTX_ID 0
+#define INVALID_PARTITION_ID 0x7FFF
+
+#define NWLD_CTX_INDEX 0
+#define SWLD_CTX_INDEX 0
+
+#define FFA_PARTITION_ID_BASE 0x8002
+
 static spmc_sp_context_t spmc_sp_ctx[SECURE_PARTITION_COUNT];
-static unsigned int next_available_sp_index;
-static unsigned int schedule_sp_index;
+static spmc_sp_context_t spmc_nwld_ctx[NWLD_PARTITION_COUNT];
+
+/* Reserve first ID  for the normal world ctx. */
+static unsigned int next_available_sp_index = 0;
+static unsigned int schedule_sp_index = 0;
 
 static void *spmc_manifest;
 
@@ -518,6 +529,9 @@ static uint64_t direct_resp_smc_handler(uint32_t smc_fid,
 	return spmc_smc_return(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 }
 
+/*******************************************************************************
+ * SPMC Helper Functions
+ ******************************************************************************/
 
 void spmc_set_config_addr(uintptr_t soc_fw_config)
 {
@@ -529,12 +543,39 @@ void *spmc_get_config_addr(void)
 	return ((void *)spmc_manifest);
 }
 
+void initalize_sp_ctx(void) {
+	spmc_sp_context_t *ctx;
+	for (int i = 0; i < SECURE_PARTITION_COUNT; i ++) {
+		ctx = &spmc_sp_ctx[i];
+		ctx->sp_id = INVALID_PARTITION_ID;
+		ctx->mailbox.rx_buffer = 0;
+		ctx->mailbox.tx_buffer = 0;
+		ctx->mailbox.state = MAILBOX_STATE_EMPTY;
+	}
+}
+
+void initalize_nwld_ctx(void) {
+	spmc_sp_context_t *ctx;
+	for (int i = 0; i < NWLD_PARTITION_COUNT; i ++) {
+		ctx = &spmc_nwld_ctx[i];
+		// Initialise first entry to Nwld component with ID 0.
+		ctx->sp_id = i ? INVALID_PARTITION_ID : 0;
+		ctx->mailbox.rx_buffer = 0;
+		ctx->mailbox.tx_buffer = 0;
+		ctx->mailbox.state = MAILBOX_STATE_EMPTY;
+	}
+}
+
 /*******************************************************************************
  * Initialize contexts of all Secure Partitions.
  ******************************************************************************/
 int32_t spmc_setup(void)
 {
 	int32_t ret;
+
+	/* Initialize partiton ctxs. */
+	initalize_sp_ctx();
+	initalize_nwld_ctx();
 
 	/* Setup logical SPs. */
 	logical_sp_init();

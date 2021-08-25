@@ -267,4 +267,13 @@
 #define SECURE_PARTITION_COUNT		1
 #endif
 
+/*
+ * Number of Nwld Partitions supported.
+ * SPMC at EL3, uses this count to configure the maximum number of supported
+ * nwld partitions.
+ */
+#if defined(SPMC_AT_EL3)
+#define NWLD_PARTITION_COUNT		10
+#endif
+
 #endif /* SGI_BASE_PLATFORM_DEF_H */
