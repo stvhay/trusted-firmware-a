@@ -647,7 +647,104 @@ static uint64_t direct_resp_smc_handler(uint32_t smc_fid,
 
 	/* TODO: Update state tracking? Clear on-going direct request / current state to idle.  */
 
-	return spmc_smc_return(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+	return spmc_smc_return(smc_fid, secure_origin, x1, x2, x3, x4, handle, cookie, flags);
+}
+
+static uint64_t rxtx_map_handler(uint32_t smc_fid,
+				 bool secure_origin,
+				 uint64_t x1,
+				 uint64_t x2,
+				 uint64_t x3,
+				 uint64_t x4,
+				 void *cookie,
+				 void *handle,
+				 uint64_t flags)
+{
+	int ret;
+	uint32_t error_code;
+	uint32_t mem_atts = secure_origin ? MT_SECURE : MT_NS;
+	spmc_sp_context_t *ctx = spmc_get_current_ctx(flags);
+
+	spin_lock(&ctx->mailbox.lock);
+
+	/* Check if buffers have already been mapped. */
+	if (ctx->mailbox.rx_buffer != 0 || ctx->mailbox.tx_buffer != 0) {
+		WARN("%p %p\n", (void *) ctx->mailbox.rx_buffer, (void *)ctx->mailbox.tx_buffer);
+		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
+	}
+
+	ctx->mailbox.rxtx_page_count = x3 & 0x1F; /* Bits [5:0] */
+
+	/* memmap the TX buffer as read only. */
+	ret = mmap_add_dynamic_region(x1, /* PA */
+			x1, /* VA */
+			PAGE_SIZE * ctx->mailbox.rxtx_page_count, /* size */
+			mem_atts | MT_RO_DATA); /* attrs */
+	if (ret) {
+		/* Return the correct error code. */
+		error_code = (ret == -ENOMEM) ? FFA_ERROR_NO_MEMORY : FFA_ERROR_INVALID_PARAMETER;
+		WARN("Unable to map TX buffer: %d\n", error_code);
+		ctx->mailbox.rxtx_page_count = 0;
+		return spmc_ffa_error_return(handle, error_code);
+	}
+	ctx->mailbox.tx_buffer = x1;
+
+	/* memmap the RX buffer as read write. */
+	ret = mmap_add_dynamic_region(x2, /* PA */
+			x2, /* VA */
+			PAGE_SIZE * ctx->mailbox.rxtx_page_count, /* size */
+			mem_atts | MT_RW_DATA); /* attrs */
+
+	if (ret) {
+		error_code = (ret == -ENOMEM) ? FFA_ERROR_NO_MEMORY : FFA_ERROR_INVALID_PARAMETER;
+		WARN("Unable to map RX buffer: %d\n", error_code);
+		goto err_unmap;
+	}
+	ctx->mailbox.rx_buffer = x2;
+	spin_unlock(&ctx->mailbox.lock);
+
+	SMC_RET1(handle, FFA_SUCCESS_SMC32);
+
+err_unmap:
+	/* Unmap the TX buffer again. */
+	(void)mmap_remove_dynamic_region(ctx->mailbox.tx_buffer, PAGE_SIZE * ctx->mailbox.rxtx_page_count);
+	ctx->mailbox.tx_buffer = 0;
+	ctx->mailbox.rxtx_page_count = 0;
+	spin_unlock(&ctx->mailbox.lock);
+
+	return spmc_ffa_error_return(handle, error_code);
+}
+
+static uint64_t rxtx_unmap_handler(uint32_t smc_fid,
+				   bool secure_origin,
+				   uint64_t x1,
+				   uint64_t x2,
+				   uint64_t x3,
+				   uint64_t x4,
+				   void *cookie,
+				   void *handle,
+				   uint64_t flags)
+{
+	spmc_sp_context_t *ctx = spmc_get_current_ctx(flags);
+
+	spin_lock(&ctx->mailbox.lock);
+
+	/* Check if buffers have already been mapped. */
+	if (ctx->mailbox.rx_buffer != 0 || ctx->mailbox.tx_buffer != 0) {
+		spin_unlock(&ctx->mailbox.lock);
+		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
+	}
+
+	/* unmap RX Buffer */
+	(void)mmap_remove_dynamic_region(ctx->mailbox.rx_buffer, PAGE_SIZE * ctx->mailbox.rxtx_page_count);
+	ctx->mailbox.rx_buffer = 0;
+
+	/* unmap TX Buffer */
+	(void)mmap_remove_dynamic_region(ctx->mailbox.tx_buffer, PAGE_SIZE * ctx->mailbox.rxtx_page_count);
+	ctx->mailbox.tx_buffer = 0;
+
+	spin_unlock(&ctx->mailbox.lock);
+	SMC_RET1(handle, FFA_SUCCESS_SMC32);
 }
 
 /*******************************************************************************
@@ -745,6 +842,12 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 
 	case FFA_PARTITION_INFO_GET:
 		return partition_info_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_RXTX_MAP_SMC64:
+		return rxtx_map_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_RXTX_UNMAP:
+		return rxtx_unmap_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
 	case FFA_MSG_WAIT:
 		/* Check if SP init call. */
