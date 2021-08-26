@@ -921,6 +921,7 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 			  void *handle,
 			  uint64_t flags)
 {
+	VERBOSE("SPMC: 0x%x 0x%llx 0x%llx 0x%llx 0x%llx\n", smc_fid, x1, x2, x3, x4);
 	switch (smc_fid) {
 	case FFA_ID_GET:
 		return ffa_id_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
@@ -956,7 +957,7 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 		return spmd_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle, flags);
 
 	default:
-		WARN("Not Supported 0x%x FFA Request ID\n", smc_fid);
+		WARN("Not Supported 0x%x (0x%llx, 0x%llx, 0x%llx, 0x%llx) FFA Request ID\n", smc_fid, x1, x2, x3, x4);
 		break;
 	}
 	return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
