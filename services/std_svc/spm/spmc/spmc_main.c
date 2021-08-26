@@ -770,6 +770,7 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_ERROR:
 		case FFA_SUCCESS_SMC32:
 		case FFA_SUCCESS_SMC64:
+		case FFA_ID_GET:
 		case FFA_FEATURES:
 		case FFA_VERSION:
 		case FFA_MSG_SEND_DIRECT_REQ_SMC64:
@@ -816,6 +817,20 @@ static uint64_t ffa_version_handler(uint32_t smc_fid,
 	SMC_RET1(handle,
 			 FFA_VERSION_MAJOR << FFA_VERSION_MAJOR_SHIFT |
 			 FFA_VERSION_MINOR);
+}
+
+static uint64_t ffa_id_get_handler(uint32_t smc_fid,
+				   bool secure_origin,
+				   uint64_t x1,
+				   uint64_t x2,
+				   uint64_t x3,
+				   uint64_t x4,
+				   void *cookie,
+				   void *handle,
+				   uint64_t flags)
+{
+	spmc_sp_context_t *ctx = spmc_get_current_ctx(flags);
+	SMC_RET3(handle, FFA_SUCCESS_SMC32, 0x0, ctx->sp_id);
 }
 
 /*******************************************************************************
@@ -905,6 +920,8 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 			  uint64_t flags)
 {
 	switch (smc_fid) {
+	case FFA_ID_GET:
+		return ffa_id_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	case FFA_FEATURES:
 		return ffa_features_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	case FFA_VERSION:
