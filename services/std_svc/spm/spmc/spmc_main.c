@@ -435,6 +435,11 @@ static int find_and_prepare_sp_context(void)
 			return ret;
 		}
 
+		/* Assign FFA Partition ID if not already assigned */
+		if (ctx->sp_id == INVALID_PARTITION_ID) {
+			ctx->sp_id = FFA_PARTITION_ID_BASE + next_available_sp_index;
+		}
+
 		cm_setup_context(cpu_ctx, &ep_info);
 		write_ctx_reg(get_gpregs_ctx(cpu_ctx), CTX_GPREG_SP_EL0,
 				sp_ctx->sp_stack_base + sp_ctx->sp_pcpu_stack_size);
