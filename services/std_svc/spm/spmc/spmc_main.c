@@ -773,7 +773,9 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_ID_GET:
 		case FFA_FEATURES:
 		case FFA_VERSION:
+		case FFA_MSG_SEND_DIRECT_REQ_SMC32:
 		case FFA_MSG_SEND_DIRECT_REQ_SMC64:
+		case FFA_MSG_SEND_DIRECT_RESP_SMC32:
 		case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 		case FFA_PARTITION_INFO_GET:
 		case FFA_RXTX_MAP_SMC64:
@@ -927,9 +929,11 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 	case FFA_VERSION:
 		return ffa_version_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
+	case FFA_MSG_SEND_DIRECT_REQ_SMC32:
 	case FFA_MSG_SEND_DIRECT_REQ_SMC64:
 		return direct_req_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
+	case FFA_MSG_SEND_DIRECT_RESP_SMC32:
 	case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 		return direct_resp_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
