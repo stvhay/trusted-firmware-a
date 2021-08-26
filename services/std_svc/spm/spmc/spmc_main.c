@@ -771,6 +771,7 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_SUCCESS_SMC32:
 		case FFA_SUCCESS_SMC64:
 		case FFA_FEATURES:
+		case FFA_VERSION:
 		case FFA_MSG_SEND_DIRECT_REQ_SMC64:
 		case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 		case FFA_PARTITION_INFO_GET:
@@ -788,6 +789,33 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
 	}
 	return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+}
+
+static uint64_t ffa_version_handler(uint32_t smc_fid,
+				    bool secure_origin,
+				    uint64_t x1,
+				    uint64_t x2,
+				    uint64_t x3,
+				    uint64_t x4,
+				    void *cookie,
+				    void *handle,
+				    uint64_t flags)
+{
+	/*
+	 * Ensure that both major and minor revision representation occupies at
+	 * most 15 bits.
+	 */
+	assert(0x8000 > FFA_VERSION_MAJOR);
+	assert(0x10000 > FFA_VERSION_MINOR);
+
+	if (x1 & FFA_VERSION_BIT31_MASK) {
+		/* Invalid encoding, return an error. */
+		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+	}
+
+	SMC_RET1(handle,
+			 FFA_VERSION_MAJOR << FFA_VERSION_MAJOR_SHIFT |
+			 FFA_VERSION_MINOR);
 }
 
 /*******************************************************************************
@@ -879,6 +907,9 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 	switch (smc_fid) {
 	case FFA_FEATURES:
 		return ffa_features_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+	case FFA_VERSION:
+		return ffa_version_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
 	case FFA_MSG_SEND_DIRECT_REQ_SMC64:
 		return direct_req_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
