@@ -752,6 +752,44 @@ static uint64_t rxtx_unmap_handler(uint32_t smc_fid,
 	SMC_RET1(handle, FFA_SUCCESS_SMC32);
 }
 
+static uint64_t ffa_features_handler(uint32_t smc_fid,
+				     bool secure_origin,
+				     uint64_t x1,
+				     uint64_t x2,
+				     uint64_t x3,
+				     uint64_t x4,
+				     void *cookie,
+				     void *handle,
+				     uint64_t flags)
+{
+	uint32_t function_id = x1;
+
+	if (function_id & FFA_VERSION_BIT31_MASK) {
+
+		switch (function_id) {
+		case FFA_ERROR:
+		case FFA_SUCCESS_SMC32:
+		case FFA_SUCCESS_SMC64:
+		case FFA_FEATURES:
+		case FFA_MSG_SEND_DIRECT_REQ_SMC64:
+		case FFA_MSG_SEND_DIRECT_RESP_SMC64:
+		case FFA_PARTITION_INFO_GET:
+		case FFA_RXTX_MAP_SMC64:
+		case FFA_RXTX_UNMAP:
+		case FFA_MSG_WAIT:
+			SMC_RET1(handle, FFA_SUCCESS_SMC32);
+
+		default:
+			return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
+		}
+	}
+	else{
+		/* TODO: Handle features. */
+		return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
+	}
+	return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+}
+
 /*******************************************************************************
  * SPMC Helper Functions
  ******************************************************************************/
@@ -839,6 +877,8 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 			  uint64_t flags)
 {
 	switch (smc_fid) {
+	case FFA_FEATURES:
+		return ffa_features_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	case FFA_MSG_SEND_DIRECT_REQ_SMC64:
 		return direct_req_smc_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
