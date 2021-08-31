@@ -62,6 +62,8 @@
 		((src_dst_ids >> 16) & FFA_PARTITION_ID_MASK)
 #define FFA_RECEIVER(src_dst_ids) \
 		(src_dst_ids & FFA_PARTITION_ID_MASK)
+#define FFA_RUN_TARGET(src_dst_ids) \
+		((src_dst_ids >> 16) & FFA_PARTITION_ID_MASK)
 
 
 /* Get FFA fastcall std FID from function number */

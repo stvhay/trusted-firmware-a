@@ -780,6 +780,7 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_PARTITION_INFO_GET:
 		case FFA_RXTX_MAP_SMC64:
 		case FFA_RXTX_UNMAP:
+		case FFA_MSG_RUN:
 		case FFA_MSG_WAIT:
 			SMC_RET1(handle, FFA_SUCCESS_SMC32);
 
@@ -833,6 +834,32 @@ static uint64_t ffa_id_get_handler(uint32_t smc_fid,
 {
 	spmc_sp_context_t *ctx = spmc_get_current_ctx(flags);
 	SMC_RET3(handle, FFA_SUCCESS_SMC32, 0x0, ctx->sp_id);
+}
+
+static uint64_t ffa_run_handler(uint32_t smc_fid,
+				bool secure_origin,
+				uint64_t x1,
+				uint64_t x2,
+				uint64_t x3,
+				uint64_t x4,
+				void *cookie,
+				void *handle,
+				uint64_t flags)
+{
+
+	/* Can only be called from the normal world. */
+	if (secure_origin) {
+		spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+	}
+
+	/* Cannot run "primary" partition. */
+	if (FFA_RUN_TARGET(x1) == NWLD_CTX_ID) {
+		spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+	}
+
+	/* TODO: Add verification are we running on the correct vcpu. */
+
+	return spmc_smc_return(smc_fid, secure_origin, FFA_RUN_TARGET(x1), 0, 0, 0, handle, cookie, flags);
 }
 
 /*******************************************************************************
@@ -956,6 +983,8 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 		/* Else forward to SPMD. */
 		return spmd_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle, flags);
 
+	case FFA_MSG_RUN:
+		return ffa_run_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	default:
 		WARN("Not Supported 0x%x (0x%llx, 0x%llx, 0x%llx, 0x%llx) FFA Request ID\n", smc_fid, x1, x2, x3, x4);
 		break;
