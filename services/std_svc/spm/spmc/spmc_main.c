@@ -55,6 +55,19 @@ el3_lp_desc_t* get_el3_lp_array(void) {
 	return el3_lp_descs;
 }
 
+/*
+ * Initial implementation to obtain source of SMC ctx.
+ * Currently assumes only single context per world.
+ * TODO: Expand to track multiple partitions.
+ */
+spmc_sp_context_t* spmc_get_current_ctx(uint64_t flags) {
+	if (is_caller_secure(flags)) {
+		return &(spmc_sp_ctx[SWLD_CTX_INDEX]);
+	}
+	else {
+		return &(spmc_nwld_ctx[NWLD_CTX_INDEX]);
+	}
+}
 
 /*******************************************************************************
  * Return FFA_ERROR with specified error code
