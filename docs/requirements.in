@@ -1,0 +1,4 @@
+sphinx==2.0.0
+sphinx-rtd-theme==0.5.2
+sphinxcontrib-plantuml==0.21
+pip-tools==6.2.0
