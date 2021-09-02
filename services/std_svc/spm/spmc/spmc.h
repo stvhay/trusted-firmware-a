@@ -25,6 +25,32 @@ enum runtime_el {
 	EL3
 };
 
+enum mailbox_state {
+	/** There is no message in the mailbox. */
+	MAILBOX_STATE_EMPTY,
+
+	/** There is a message that has been populated in the mailbox. */
+	MAILBOX_STATE_FULL,
+};
+
+
+struct mailbox {
+	enum mailbox_state state;
+
+	/* RX/TX Buffers */
+	uintptr_t rx_buffer;
+	uintptr_t tx_buffer;
+
+	/*
+	 * Size of RX/TX Buffer
+	 */
+	uint32_t rxtx_page_count;
+
+	/* Lock access to mailbox */
+	struct spinlock lock;
+};
+
+
 typedef struct spmc_sp_context {
 	/*
 	 * Secure partition context
@@ -40,6 +66,11 @@ typedef struct spmc_sp_context {
 	 * Runtime EL
 	 */
 	uint16_t runtime_el;
+
+	/*
+	 * Mailbox tracking
+	 */
+	struct mailbox mailbox;
 
 } spmc_sp_context_t;
 
