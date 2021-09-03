@@ -759,6 +759,5 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 		WARN("Not Supported 0x%x FFA Request ID\n", smc_fid);
 		break;
 	}
-
-	SMC_RET1(handle, SMC_UNK);
+	return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
 }
