@@ -24,7 +24,7 @@ ehf_pri_desc_t plat_exceptions[] = {
 	/* Normal priority SDEI */
 	EHF_PRI_DESC(PLAT_PRI_BITS, PLAT_SDEI_NORMAL_PRI),
 #endif
-#if SPM_MM
+#if SPM_MM || SPMC_AT_EL3
 	EHF_PRI_DESC(PLAT_PRI_BITS, PLAT_SP_PRI),
 #endif
 	/* Plaform specific exceptions description */
