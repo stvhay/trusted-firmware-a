@@ -71,6 +71,21 @@ arm_assert(
             "${TFA_PLATFORM_SOURCE_DIR}")
 
 #
+# Because the platform's source directory might have come from outside, CMake
+# may be unable to derive the platform's binary directory automatically. As an
+# alternative, we'll use the platform's target name as its binary directory.
+#
+
+tfa_platform_target(target
+    PLATFORM "${TFA_PLATFORM}")
+
+arm_config_option(
+    NAME TFA_PLATFORM_BINARY_DIR HIDDEN
+    HELP "Platform binary directory."
+    DEFAULT "${CMAKE_CURRENT_BINARY_DIR}/${target}"
+    TYPE PATH)
+
+#
 # We're done with very early setup, so we can now create the project. This will
 # do some of the automatic compiler detection, which we need for setting up
 # further configuration options.

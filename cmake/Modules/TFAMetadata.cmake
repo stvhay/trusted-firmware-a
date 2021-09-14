@@ -25,6 +25,14 @@ Return the list of supported platforms in ``<out-var>``.
     tfa_platform_path(<out-var> PLATFORM <platform>)
 
 Return the path to the platform ``<platform>`` in ``<out-var>``.
+
+.. command:: tfa_platform_target
+
+.. code-block:: cmake
+
+    tfa_platform_target(<out-var> PLATFORM <platform>)
+
+Return the CMake target name for the platform ``<platform>`` in ``<out-var>``.
 #]=======================================================================]
 
 include_guard()
@@ -139,4 +147,45 @@ tfa_json_getter(tfa_platforms
 
 tfa_json_getter(tfa_platform_path
     JSON "${global-metadata}" PARENT tfa_metadata_platforms_platform
+    DECODE STRING)
+
+#
+# Internal platform metadata API.
+#
+
+macro(tfa_platform_metadata_preprocess)
+    #
+    # Because we are using `tfa_platform_path` as our parent, `ARG_JSON` already
+    # contains the decoded platform path.
+    #
+
+    arm_assert(
+        CONDITION EXISTS "${ARG_JSON}/platform.json"
+        MESSAGE "The platform metadata file for the ${ARG_PLATFORM} platform "
+                "could not be found:\n"
+
+                "${ARG_JSON}/platform.json")
+
+    #
+    # Replace `ARG_JSON` with the contents of the platform metadata file.
+    #
+
+    file(READ "${ARG_JSON}/platform.json" ARG_JSON)
+    arm_expand(OUTPUT ARG_JSON STRING "${ARG_JSON}")
+endmacro()
+
+tfa_json_getter(tfa_platform_metadata
+    JSON "${global-metadata}" PARENT tfa_platform_path
+    PREPROCESS tfa_platform_metadata_preprocess)
+
+tfa_json_getter(tfa_platform_metadata_target
+    JSON "${global-metadata}" PARENT tfa_platform_metadata
+    PATH "target")
+
+#
+# External platform metadata API.
+#
+
+tfa_json_getter(tfa_platform_target
+    JSON "${global-metadata}" PARENT tfa_platform_metadata_target
     DECODE STRING)
