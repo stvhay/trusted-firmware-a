@@ -373,13 +373,18 @@ static uint64_t rxtx_map_handler(uint32_t smc_fid,
 	uint32_t mem_atts = secure_origin ? MT_SECURE : MT_NS;
 	struct mailbox *mbox;
 
+	uintptr_t tx_address = x1;
+	uintptr_t rx_address = x2;
+	uint32_t page_count = (uint32_t) x3 & 0x1F; /* Bits [5:0] */
+	uint32_t buf_size = page_count * FFA_PAGE_SIZE;
+
 	/*
 	 * The SPMC does not support mapping of VM RX/TX pairs to facilitate
 	 * indirect messaging with SPs. Check if the Hypervisor has invoked this
 	 * ABI on behalf of a VM and reject it if this is the case.
 	 * TODO: Check FF-A spec guidance on this scenario.
 	 */
-	if (x1 == 0 || x2 == 0) {
+	if (tx_address == 0 || rx_address == 0 ) {
 		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
 	}
 
@@ -390,30 +395,29 @@ static uint64_t rxtx_map_handler(uint32_t smc_fid,
 
 	/* Check if buffers have already been mapped. */
 	if (mbox->rx_buffer != 0 || mbox->tx_buffer != 0) {
-		WARN("%p %p\n", (void *) mbox->rx_buffer, (void *)mbox->tx_buffer);
-		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
+		WARN("RX/TX Buffers already mapped (%p/%p)\n", (void *) mbox->rx_buffer, (void *)mbox->tx_buffer);
+		error_code = FFA_ERROR_DENIED;
+		goto err;
 	}
 
-	mbox->rxtx_page_count = x3 & 0x1F; /* Bits [5:0] */
-
 	/* memmap the TX buffer as read only. */
-	ret = mmap_add_dynamic_region(x1, /* PA */
-			x1, /* VA */
-			PAGE_SIZE * mbox->rxtx_page_count, /* size */
+	ret = mmap_add_dynamic_region(tx_address, /* PA */
+			tx_address, /* VA */
+			buf_size, /* size */
 			mem_atts | MT_RO_DATA); /* attrs */
 	if (ret) {
 		/* Return the correct error code. */
 		error_code = (ret == -ENOMEM) ? FFA_ERROR_NO_MEMORY : FFA_ERROR_INVALID_PARAMETER;
 		WARN("Unable to map TX buffer: %d\n", error_code);
 		mbox->rxtx_page_count = 0;
-		return spmc_ffa_error_return(handle, error_code);
+		goto err;
 	}
-	mbox->tx_buffer = x1;
+	mbox->tx_buffer = (void *) tx_address;
 
 	/* memmap the RX buffer as read write. */
-	ret = mmap_add_dynamic_region(x2, /* PA */
-			x2, /* VA */
-			PAGE_SIZE * mbox->rxtx_page_count, /* size */
+	ret = mmap_add_dynamic_region(rx_address, /* PA */
+			rx_address, /* VA */
+			buf_size, /* size */
 			mem_atts | MT_RW_DATA); /* attrs */
 
 	if (ret) {
@@ -421,16 +425,17 @@ static uint64_t rxtx_map_handler(uint32_t smc_fid,
 		WARN("Unable to map RX buffer: %d\n", error_code);
 		goto err_unmap;
 	}
-	mbox->rx_buffer = x2;
+	mbox->rx_buffer = (void *) rx_address;
+	mbox->rxtx_page_count = page_count;
 	spin_unlock(&mbox->lock);
 
 	SMC_RET1(handle, FFA_SUCCESS_SMC32);
 
 err_unmap:
 	/* Unmap the TX buffer again. */
-	(void)mmap_remove_dynamic_region(mbox->tx_buffer, PAGE_SIZE * mbox->rxtx_page_count);
+	mmap_remove_dynamic_region(tx_address, buf_size);
+err:
 	mbox->tx_buffer = 0;
-	mbox->rxtx_page_count = 0;
 	spin_unlock(&mbox->lock);
 
 	return spmc_ffa_error_return(handle, error_code);
@@ -447,6 +452,7 @@ static uint64_t rxtx_unmap_handler(uint32_t smc_fid,
 				   uint64_t flags)
 {
 	struct mailbox *mbox = spmc_get_mbox_desc(flags);
+	uint32_t buf_size = mbox->rxtx_page_count * FFA_PAGE_SIZE;
 
 	/*
 	 * The SPMC does not support mapping of VM RX/TX pairs to facilitate
@@ -461,17 +467,17 @@ static uint64_t rxtx_unmap_handler(uint32_t smc_fid,
 	spin_lock(&mbox->lock);
 
 	/* Check if buffers have already been mapped. */
-	if (mbox->rx_buffer != 0 || mbox->tx_buffer != 0) {
+	if (mbox->rx_buffer == 0 || mbox->tx_buffer == 0) {
 		spin_unlock(&mbox->lock);
 		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
 	}
 
 	/* unmap RX Buffer */
-	(void)mmap_remove_dynamic_region(mbox->rx_buffer, PAGE_SIZE * mbox->rxtx_page_count);
+	mmap_remove_dynamic_region((uintptr_t) mbox->rx_buffer, buf_size);
 	mbox->rx_buffer = 0;
 
 	/* unmap TX Buffer */
-	(void)mmap_remove_dynamic_region(mbox->tx_buffer, PAGE_SIZE * mbox->rxtx_page_count);
+	mmap_remove_dynamic_region((uintptr_t) mbox->tx_buffer, buf_size);
 	mbox->tx_buffer = 0;
 
 	spin_unlock(&mbox->lock);

@@ -28,6 +28,8 @@
 #define FFA_SP_ID_BASE		(FFA_SPMC_ID + 1)	/* SP IDs are allocated after the SPMC ID */
 #define INV_SP_ID		0x7FFF			/* Align with Hafnium implementation */
 
+#define FFA_PAGE_SIZE (4096)
+
 /*
  * Runtime states of an execution context as per the FF-A v1.1 specification.
  */
@@ -69,8 +71,8 @@ struct mailbox {
 	enum mailbox_state state;
 
 	/* RX/TX Buffers */
-	uintptr_t rx_buffer;
-	uintptr_t tx_buffer;
+	void *rx_buffer;
+	const void *tx_buffer;
 
 	/*
 	 * Size of RX/TX Buffer
