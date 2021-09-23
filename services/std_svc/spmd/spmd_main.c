@@ -677,6 +677,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 	case FFA_RXTX_MAP_SMC32:
 	case FFA_RXTX_MAP_SMC64:
 	case FFA_RXTX_UNMAP:
+	case FFA_MEM_FRAG_TX:
 	case FFA_PARTITION_INFO_GET:
 		/*
 		 * Should not be allowed to forward FFA_PARTITION_INFO_GET
@@ -732,6 +733,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		}
 
 		/* Fall through to forward the call to the other world */
+	case FFA_MEM_FRAG_RX:
 	case FFA_INTERRUPT:
 	case FFA_MSG_YIELD:
 		/* This interface must be invoked only by the Secure world */
