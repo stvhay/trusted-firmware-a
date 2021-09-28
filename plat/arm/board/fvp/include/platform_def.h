@@ -92,8 +92,8 @@
 #  endif
 # endif
 #elif defined(IMAGE_BL32)
-# define PLAT_ARM_MMAP_ENTRIES		9
-# define MAX_XLAT_TABLES		6
+# define PLAT_ARM_MMAP_ENTRIES		270
+# define MAX_XLAT_TABLES		10
 #elif !USE_ROMLIB
 # define PLAT_ARM_MMAP_ENTRIES		11
 # define MAX_XLAT_TABLES		5
