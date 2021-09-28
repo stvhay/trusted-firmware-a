@@ -238,4 +238,12 @@ sp_desc_t* spmc_get_current_sp_ctx();
  */
 unsigned int get_ec_index(sp_desc_t *sp);
 
+uint64_t spmc_ffa_error_return(void *handle, int error_code);
+
+/*
+ * Helper function to obtain the RX/TX buffer pair descriptor of the Hypervisor
+ * or the last SP that was run.
+ */
+struct mailbox *spmc_get_mbox_desc(uint64_t flags);
+
 #endif /* SPMC_H */
