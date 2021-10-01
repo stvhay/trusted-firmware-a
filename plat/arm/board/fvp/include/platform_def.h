@@ -68,6 +68,12 @@
 					PLAT_HW_CONFIG_DTB_BASE,	\
 					PLAT_HW_CONFIG_DTB_SIZE,	\
 					MT_MEMORY | MT_RO | MT_NS)
+
+/* Reserve memory for storing FF-A memory descriptors. */
+# if SPMC_AT_EL3
+#   define SPMC_SHARED_MEMORY_OBJ_SIZE 16 * 1024
+#endif
+
 /*
  * Load address of BL33 for this platform port
  */
