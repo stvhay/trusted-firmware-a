@@ -79,8 +79,8 @@
  */
 #if defined(IMAGE_BL31)
 # if SPM_MM || SPMC_AT_EL3
-#  define PLAT_ARM_MMAP_ENTRIES		12
-#  define MAX_XLAT_TABLES		10
+#  define PLAT_ARM_MMAP_ENTRIES		13
+#  define MAX_XLAT_TABLES		11
 #  define PLAT_SP_IMAGE_MMAP_REGIONS	30
 #  define PLAT_SP_IMAGE_MAX_XLAT_TABLES	10
 # else

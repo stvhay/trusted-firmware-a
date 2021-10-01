@@ -12,6 +12,7 @@ SPMC_SOURCES	:=	$(addprefix services/std_svc/spm/spmc/,	\
 			spmc_main.c				\
 			spmc_setup.c				\
 			spmc_pm.c				\
+			spmc_shared_mem.c			\
 			logical_sp_test.c)
 
 

@@ -31,6 +31,7 @@
 
 #include "spmc.h"
 #include "spm_shim_private.h"
+#include "spmc_shared_mem.h"
 
 /*
  * Allocate a secure partition descriptor to describe each SP in the system that
@@ -119,7 +120,7 @@ __dead2 void spmc_sp_synchronous_exit(sp_exec_ctx_t *ec, uint64_t rc)
 /*******************************************************************************
  * Return FFA_ERROR with specified error code
  ******************************************************************************/
-static uint64_t spmc_ffa_error_return(void *handle, int error_code)
+uint64_t spmc_ffa_error_return(void *handle, int error_code)
 {
 	SMC_RET8(handle, FFA_ERROR,
 		 FFA_TARGET_INFO_MBZ, error_code,
@@ -196,7 +197,6 @@ static uint64_t partition_info_get_handler(uint32_t smc_fid,
 
 	/* Obtain the RX/TX buffer pair descriptor. */
 	mbox = spmc_get_mbox_desc(flags);
-
 	/*
 	 * If the caller has not bothered registering its RX/TX pair then return
 	 * the invalid parameters error code.
@@ -514,6 +514,14 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_PARTITION_INFO_GET:
 		case FFA_RXTX_MAP_SMC64:
 		case FFA_RXTX_UNMAP:
+		case FFA_MEM_SHARE_SMC64:
+		case FFA_MEM_LEND_SMC64:
+		case FFA_MEM_FRAG_TX:
+		case FFA_MEM_FRAG_RX:
+		case FFA_MEM_RETRIEVE_REQ_SMC32:
+		case FFA_MEM_RETRIEVE_REQ_SMC64:
+		case FFA_MEM_RELINQUISH:
+		case FFA_MEM_RECLAIM:
 		case FFA_MSG_RUN:
 		case FFA_MSG_WAIT:
 
@@ -728,8 +736,8 @@ static uint64_t rx_release_handler(uint32_t smc_fid,
 				   void *handle,
 				   uint64_t flags)
 {	struct mailbox *mbox = spmc_get_mbox_desc(flags);
-
 	spin_lock(&mbox->lock);
+
 	if (mbox->state != MAILBOX_STATE_FULL) {
 		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
 	}
@@ -1322,6 +1330,7 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 	case FFA_PARTITION_INFO_GET:
 		return partition_info_get_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
+	case FFA_RXTX_MAP_SMC32:
 	case FFA_RXTX_MAP_SMC64:
 		return rxtx_map_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
@@ -1342,6 +1351,26 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 
 	case FFA_MSG_RUN:
 		return ffa_run_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_SHARE_SMC64:
+	case FFA_MEM_LEND_SMC64:
+		return spmc_ffa_mem_send(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_FRAG_TX:
+		return spmc_ffa_mem_frag_tx(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_FRAG_RX:
+		return spmc_ffa_mem_frag_rx(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_RETRIEVE_REQ_SMC32:
+	case FFA_MEM_RETRIEVE_REQ_SMC64:
+		return spmc_ffa_mem_retrieve_req(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_RELINQUISH:
+		return spmc_ffa_mem_relinquish(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_MEM_RECLAIM:
+		return spmc_ffa_mem_reclaim(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
 	default:
 		WARN("Not Supported 0x%x (0x%llx, 0x%llx, 0x%llx, 0x%llx) FFA Request ID\n", smc_fid, x1, x2, x3, x4);
