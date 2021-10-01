@@ -111,6 +111,11 @@ extern tsp_vectors_t tsp_vector_table;
 int32_t tsp_common_int_handler(void);
 int32_t tsp_handle_preemption(void);
 
+tsp_args_t tsp_smc(uint32_t func, uint64_t arg0,
+			  uint64_t arg1, uint64_t arg2,
+			  uint64_t arg3, uint64_t arg4,
+			  uint64_t arg5, uint64_t arg6);
+
 tsp_args_t *tsp_abort_smc_handler(uint64_t func,
 				  uint64_t arg1,
 				  uint64_t arg2,
