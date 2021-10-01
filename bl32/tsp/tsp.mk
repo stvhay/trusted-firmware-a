@@ -7,6 +7,7 @@
 INCLUDES		+=	-Iinclude/bl32/tsp
 
 BL32_SOURCES		+=	bl32/tsp/tsp_main.c			\
+				bl32/tsp/ffa_helpers.c			\
 				bl32/tsp/aarch64/tsp_entrypoint.S	\
 				bl32/tsp/aarch64/tsp_exceptions.S	\
 				bl32/tsp/aarch64/tsp_request.S		\
