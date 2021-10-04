@@ -491,6 +491,7 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 		case FFA_ERROR:
 		case FFA_SUCCESS_SMC32:
 		case FFA_SUCCESS_SMC64:
+		case FFA_SPM_ID_GET:
 		case FFA_ID_GET:
 		case FFA_FEATURES:
 		case FFA_VERSION:
@@ -1248,6 +1249,9 @@ int32_t spmc_setup(void)
 		return ret;
 	}
 
+	/* Register power management hooks with PSCI */
+	psci_register_spd_pm_hook(&spmc_pm);
+
 	/* Register init function for deferred init.  */
 	bl31_register_bl32_init(&sp_init);
 
@@ -1279,6 +1283,9 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 		return ffa_features_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 	case FFA_VERSION:
 		return ffa_version_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
+	case FFA_SECONDARY_EP_REGISTER_SMC64:
+		return ffa_sec_ep_register_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
 
 	case FFA_MSG_SEND_DIRECT_REQ_SMC32:
 	case FFA_MSG_SEND_DIRECT_REQ_SMC64:

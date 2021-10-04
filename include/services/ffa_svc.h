@@ -73,6 +73,21 @@
 		 (OEN_STD_START << FUNCID_OEN_SHIFT) |	\
 		 ((func_num) << FUNCID_NUM_SHIFT))
 
+/*
+ * Defines for power management framework messages exchanged using direct
+ * messages between the SPMC and SP.
+ */
+#define FFA_DIRECT_FRAMEWORK_MSG_SHIFT	31
+#define FFA_DIRECT_FRAMEWORK_MSG_MASK	(1UL << FFA_DIRECT_FRAMEWORK_MSG_SHIFT)
+
+#define FFA_PM_MSG_MASK			0xFF
+#define FFA_PM_MSG_PSCI_REQ		0x0
+#define FFA_PM_MSG_WB_REQ		0x1		/* Warm boot request */
+#define FFA_PM_MSG_PM_RESP		0x2		/* Response to a PSCI or warmboot request */
+
+#define FFA_WB_TYPE_S2RAM		0
+#define FFA_WB_TYPE_NOTS2RAM		1
+
 /* FFA function numbers */
 #define FFA_FNUM_ERROR				U(0x60)
 #define FFA_FNUM_SUCCESS			U(0x61)

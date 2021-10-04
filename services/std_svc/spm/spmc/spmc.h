@@ -8,6 +8,8 @@
 #define SPMC_H
 
 #include <stdint.h>
+#include <lib/psci/psci.h>
+
 
 #include "spm_common.h"
 
