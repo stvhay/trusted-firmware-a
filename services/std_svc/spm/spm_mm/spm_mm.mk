@@ -12,7 +12,10 @@ ifneq (${ARCH},aarch64)
 endif
 
 SPM_MM_SOURCES	:=	$(addprefix services/std_svc/spm/spm_mm/,	\
-			spm_mm_main.c)
+			spm_mm_main.c					\
+			spm_mm_common.c					\
+			spm_mm_xlat.c					\
+			spm_mm_setup.c)
 
 
 # Let the top-level Makefile know that we intend to include a BL32 image
