@@ -11,6 +11,7 @@
 
 #include <bl31/bl31.h>
 #include <bl31/ehf.h>
+#include <bl31/interrupt_mgmt.h>
 #include <common/debug.h>
 #include <common/fdt_wrappers.h>
 #include <common/runtime_svc.h>
@@ -45,6 +46,10 @@ static sp_desc_t sp_desc[SECURE_PARTITION_COUNT];
  */
 static ns_ep_desc_t ns_ep_desc[NS_PARTITION_COUNT];
 
+static uint64_t spmc_sp_interrupt_handler(uint32_t id,
+					  uint32_t flags,
+					  void *handle,
+					  void *cookie);
 
 el3_lp_desc_t* get_el3_lp_array(void) {
 	el3_lp_desc_t *el3_lp_descs;
@@ -1252,6 +1257,19 @@ int32_t spmc_setup(void)
 	/* Register power management hooks with PSCI */
 	psci_register_spd_pm_hook(&spmc_pm);
 
+	/*
+	 * Register an interrupt handler for S-EL1 interrupts
+	 * when generated during code executing in the
+	 * non-secure state.
+	 */
+	flags = 0;
+	set_interrupt_rm_flag(flags, NON_SECURE);
+	ret = register_interrupt_type_handler(INTR_TYPE_S_EL1,
+					      spmc_sp_interrupt_handler,
+					      flags);
+	if (ret)
+		panic();
+
 	/* Register init function for deferred init.  */
 	bl31_register_bl32_init(&sp_init);
 
@@ -1318,9 +1336,59 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 
 	case FFA_MSG_RUN:
 		return ffa_run_handler(smc_fid, secure_origin, x1, x2, x3, x4, cookie, handle, flags);
+
 	default:
 		WARN("Not Supported 0x%x (0x%llx, 0x%llx, 0x%llx, 0x%llx) FFA Request ID\n", smc_fid, x1, x2, x3, x4);
 		break;
 	}
 	return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
+}
+
+/*******************************************************************************
+ * This function is the handler registered for S-EL1 interrupts by the SPMC. It
+ * validates the interrupt and upon success arranges entry into the SP for
+ * handling the interrupt.
+ ******************************************************************************/
+static uint64_t spmc_sp_interrupt_handler(uint32_t id,
+					  uint32_t flags,
+					  void *handle,
+					  void *cookie)
+{
+	sp_desc_t *sp = spmc_get_current_sp_ctx();
+	sp_exec_ctx_t *ec;
+	uint32_t linear_id = plat_my_core_pos();
+
+	/* Sanity check for a NULL pointer dereference */
+	assert (NULL != sp);
+
+	/* Panic in case of a S-EL0 SP */
+	if (sp->runtime_el == EL0) {
+		ERROR("Yikes! Interrupt received for a S-EL0 SP on core%u \n", linear_id);
+		panic();
+	}
+
+	/* Obtain a reference to the SP execution context */
+	ec = &sp->ec[get_ec_index(sp)];
+
+	/* Ensure that the execution context is in a waiting state else panic. */
+	if (ec->rt_state != RT_STATE_WAITING) {
+		ERROR("Yikes! S-EL1 SP context on core%u is in %u state\n", linear_id,
+		      ec->rt_state);
+		panic();
+	}
+
+	/* Update the runtime model and state of the partition */
+	ec->rt_model = RT_MODEL_INTR;
+	ec->rt_state = RT_STATE_RUNNING;
+
+	VERBOSE("SP (0x%x) interrupt start on core%u \n", sp->sp_id, linear_id);
+
+	/*
+	 * Forward the interrupt to the S-EL1 SP. The interrupt ID is not
+	 * populated as the SP can determine this by itself.
+	 * TODO: Add support for handing interrupts to a S-EL0 SP.
+	 */
+	return ffa_smc_forward(FFA_INTERRUPT, is_caller_secure(flags), FFA_PARAM_MBZ,
+			       FFA_PARAM_MBZ, FFA_PARAM_MBZ, FFA_PARAM_MBZ,
+			       cookie, handle, flags);
 }
