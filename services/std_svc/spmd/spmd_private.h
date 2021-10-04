@@ -44,7 +44,8 @@ typedef enum spmc_state {
 
 /*
  * Data structure used by the SPM dispatcher (SPMD) in EL3 to track context of
- * the SPM core (SPMC) at the next lower EL.
+ * the SPM core (SPMC) at the next lower EL. When the SPMC is at EL3, only the
+ * state field is used.
  */
 typedef struct spmd_spm_core_context {
 	uint64_t c_rt_ctx;

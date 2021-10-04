@@ -193,7 +193,7 @@
  * nwld partitions.
  */
 #if defined(SPMC_AT_EL3)
-#define NWLD_PARTITION_COUNT		1
+#define NS_PARTITION_COUNT		1
 #endif
 
 #endif /* FVP_DEF_H */

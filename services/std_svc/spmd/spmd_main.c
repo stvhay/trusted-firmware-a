@@ -33,9 +33,19 @@
 static spmd_spm_core_context_t spm_core_context[PLATFORM_CORE_COUNT];
 
 /*******************************************************************************
- * SPM Core attribute information read from its manifest.
+ * SPM Core attribute information is read from its manifest if the SPMC is not
+ * at EL3. Else, it is initialised statically.
  ******************************************************************************/
+#if SPMC_AT_EL3
+static spmc_manifest_attribute_t spmc_attrs = {
+	.major_version  = FFA_VERSION_MAJOR,
+	.minor_version  = FFA_VERSION_MINOR,
+	.exec_state     = MODE_RW_64,
+	.spmc_id        = 0x8000,
+};
+#else
 static spmc_manifest_attribute_t spmc_attrs;
+#endif
 
 /*******************************************************************************
  * SPM Core entry point information. Discovered on the primary core and reused
@@ -306,48 +316,19 @@ static int spmd_spmc_init(void *pm_addr)
  ******************************************************************************/
 int spmd_setup(void)
 {
-	uint64_t rc;
+	int rc;
 	void *spmc_manifest;
 
+	/*
+	 * If the SPMC is at EL3, then just initialise it directly. The
+	 * shenanigans of when it is at a lower EL are not needed.
+	 */
 	if (is_spmc_at_el3()) {
-		spmd_spm_core_context_t *ctx = spmd_get_context();
-		unsigned int linear_id = plat_my_core_pos();
-		unsigned int core_id;
-
-		VERBOSE("SPM Core init start.\n");
-
-		ctx->state = SPMC_STATE_ON_PENDING;
-
-		/* Set the SPMC context state on other CPUs to OFF */
-		for (core_id = 0U; core_id < PLATFORM_CORE_COUNT; core_id++) {
-			if (core_id != linear_id)
-				spm_core_context[core_id].state = SPMC_STATE_OFF;
-		}
-
-		/* Get SPMC manifest address */
-		spmc_manifest = spmc_get_config_addr();
-		if (spmc_manifest == NULL) {
-			ERROR("Invalid or absent SPM Core manifest.\n");
-			return -EINVAL;
-		}
-
-		/* Load the SPM Core manifest */
-		rc = plat_spm_core_manifest_load(&spmc_attrs, spmc_manifest);
-		if (rc != 0) {
-			WARN("No or invalid SPM Core manifest provided by BL2\n");
-			return rc;
-		}
-
 		rc = spmc_setup();
-		if (rc != 0ULL) {
-			ERROR("SPMC initialisation failed 0x%llx\n", rc);
-			return 0;
+		if (rc != 0) {
+			ERROR("SPMC initialisation failed 0x%llx\n", (unsigned long long) rc);
 		}
-
-		ctx->state = SPMC_STATE_ON;
-
-		VERBOSE("SPM Core init end.\n");
-		return 0;
+		return rc;
 	}
 
 	spmc_ep_info = bl31_plat_get_next_image_ep_info(SECURE);
@@ -382,20 +363,15 @@ int spmd_setup(void)
  * Forward FFA SMCs to the other security state
  ******************************************************************************/
 uint64_t ffa_smc_forward(uint32_t smc_fid,
-				 bool secure_origin,
-				 uint64_t x1,
-				 uint64_t x2,
-				 uint64_t x3,
-				 uint64_t x4,
-				 void *cookie,
-				 void *handle,
-				 uint64_t flags)
+			 bool secure_origin,
+			 uint64_t x1,
+			 uint64_t x2,
+			 uint64_t x3,
+			 uint64_t x4,
+			 void *cookie,
+			 void *handle,
+			 uint64_t flags)
 {
-	if (is_spmc_at_el3()) {
-		return spmc_smc_handler(smc_fid, x1, x2, x3, x4, cookie,
-					handle, flags);
-	}
-
 	unsigned int secure_state_in = (secure_origin) ? SECURE : NON_SECURE;
 	unsigned int secure_state_out = (!secure_origin) ? SECURE : NON_SECURE;
 
@@ -551,7 +527,7 @@ uint64_t spmd_smc_handler(uint32_t smc_fid,
 		 * Sanity check to "input_version".
 		 */
 		if ((input_version & FFA_VERSION_BIT31_MASK) ||
-			(ctx->state == SPMC_STATE_RESET)) {
+		    (!is_spmc_at_el3() && (ctx->state == SPMC_STATE_RESET))) {
 			ret = FFA_ERROR_NOT_SUPPORTED;
 		} else if (!secure_origin) {
 			ret = MAKE_FFA_VERSION(spmc_attrs.major_version,
