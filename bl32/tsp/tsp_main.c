@@ -15,6 +15,10 @@
 #include <plat/common/platform.h>
 #include <platform_def.h>
 #include <platform_tsp.h>
+#if SPMC_AT_EL3
+#include <services/ffa_svc.h>
+#include <lib/psci/psci.h>
+#endif
 
 #include "tsp_private.h"
 
@@ -43,14 +47,51 @@ work_statistics_t tsp_stats[PLATFORM_CORE_COUNT];
 #define BL32_TOTAL_LIMIT BL32_END
 #define BL32_TOTAL_SIZE (BL32_TOTAL_LIMIT - (unsigned long) BL32_BASE)
 
+#if SPMC_AT_EL3
+static unsigned int spmc_id;
+#endif
+
+static tsp_args_t tsp_smc(uint32_t func, uint64_t arg0,
+			  uint64_t arg1, uint64_t arg2,
+			  uint64_t arg3, uint64_t arg4,
+			  uint64_t arg5, uint64_t arg6)
+{
+	tsp_args_t ret_args = {0};
+	register uint64_t r0 __asm__("x0") = func;
+	register uint64_t r1 __asm__("x1") = arg0;
+	register uint64_t r2 __asm__("x2") = arg1;
+	register uint64_t r3 __asm__("x3") = arg2;
+	register uint64_t r4 __asm__("x4") = arg3;
+	register uint64_t r5 __asm__("x5") = arg4;
+	register uint64_t r6 __asm__("x6") = arg5;
+	register uint64_t r7 __asm__("x7") = arg6;
+
+	__asm__ volatile(
+		                "smc #0"
+				: /* Output registers, also used as inputs ('+' constraint). */
+				  "+r"(r0), "+r"(r1), "+r"(r2), "+r"(r3), "+r"(r4), "+r"(r5),
+				  "+r"(r6), "+r"(r7));
+
+	ret_args._regs[0] = r0;
+	ret_args._regs[1] = r1;
+	ret_args._regs[2] = r2;
+	ret_args._regs[3] = r3;
+	ret_args._regs[4] = r4;
+	ret_args._regs[5] = r5;
+	ret_args._regs[6] = r6;
+	ret_args._regs[7] = r7;
+
+	return ret_args;
+}
+
 static tsp_args_t *set_smc_args(uint64_t arg0,
-			     uint64_t arg1,
-			     uint64_t arg2,
-			     uint64_t arg3,
-			     uint64_t arg4,
-			     uint64_t arg5,
-			     uint64_t arg6,
-			     uint64_t arg7)
+				uint64_t arg1,
+				uint64_t arg2,
+				uint64_t arg3,
+				uint64_t arg4,
+				uint64_t arg5,
+				uint64_t arg6,
+				uint64_t arg7)
 {
 	uint32_t linear_id;
 	tsp_args_t *pcpu_smc_args;
@@ -98,7 +139,11 @@ void tsp_setup(void)
  * state/applications. Once the state is initialized, it must return to the
  * SPD with a pointer to the 'tsp_vector_table' jump table.
  ******************************************************************************/
+#if SPMC_AT_EL3
+tsp_args_t *tsp_main(uintptr_t secondary_ep)
+#else
 uint64_t tsp_main(void)
+#endif
 {
 	NOTICE("TSP: %s\n", version_string);
 	NOTICE("TSP: %s\n", build_message);
@@ -113,6 +158,40 @@ uint64_t tsp_main(void)
 	/* Initialize secure/applications state here */
 	tsp_generic_timer_start();
 
+#if SPMC_AT_EL3
+	{
+		tsp_args_t smc_args = {0};
+
+		/* Register secondary entrypoint with the SPMC. */
+		smc_args = tsp_smc(FFA_SECONDARY_EP_REGISTER_SMC64,
+				   (uint64_t) secondary_ep,
+				   0, 0, 0, 0, 0, 0);
+		if (smc_args._regs[TSP_ARG0] != FFA_SUCCESS_SMC32)
+			ERROR("TSP could not register secondary ep (0x%llx)\n",
+			      smc_args._regs[2]);
+
+		/* Get TSP's endpoint id */
+		smc_args = tsp_smc(FFA_ID_GET, 0, 0, 0, 0, 0, 0, 0);
+		if (smc_args._regs[TSP_ARG0] != FFA_SUCCESS_SMC32) {
+			ERROR("TSP could not get own ID (0x%llx) on core%d\n",
+			      smc_args._regs[2], linear_id);
+			panic();
+		}
+
+		INFO("TSP FF-A endpoint id = 0x%llx \n", smc_args._regs[2]);
+
+		/* Get the SPMC ID */
+		smc_args = tsp_smc(FFA_SPM_ID_GET, 0, 0, 0, 0, 0, 0, 0);
+		if (smc_args._regs[TSP_ARG0] != FFA_SUCCESS_SMC32) {
+			ERROR("TSP could not get SPMC ID (0x%llx) on core%d\n",
+			      smc_args._regs[2], linear_id);
+			panic();
+		}
+
+		spmc_id = smc_args._regs[2];
+
+	}
+#endif
 	/* Update this cpu's statistics */
 	tsp_stats[linear_id].smc_count++;
 	tsp_stats[linear_id].eret_count++;
@@ -127,7 +206,11 @@ uint64_t tsp_main(void)
 	     tsp_stats[linear_id].cpu_on_count);
 	spin_unlock(&console_lock);
 #endif
+#if SPMC_AT_EL3
+	return set_smc_args(FFA_MSG_WAIT, 0, 0, 0, 0, 0, 0, 0);
+#else
 	return (uint64_t) &tsp_vector_table;
+#endif
 }
 
 /*******************************************************************************
@@ -157,8 +240,13 @@ tsp_args_t *tsp_cpu_on_main(void)
 		tsp_stats[linear_id].cpu_on_count);
 	spin_unlock(&console_lock);
 #endif
+
+#if SPMC_AT_EL3
+	return set_smc_args(FFA_MSG_WAIT, 0, 0, 0, 0, 0, 0, 0);
+#else
 	/* Indicate to the SPD that we have completed turned ourselves on */
 	return set_smc_args(TSP_ON_DONE, 0, 0, 0, 0, 0, 0, 0);
+#endif
 }
 
 /*******************************************************************************
@@ -199,8 +287,32 @@ tsp_args_t *tsp_cpu_off_main(uint64_t arg0,
 	spin_unlock(&console_lock);
 #endif
 
+#if SPMC_AT_EL3
+	{
+		unsigned int tsp_id;
+		tsp_args_t smc_args = {0};
+
+		/* Get the TSP ID */
+		smc_args = tsp_smc(FFA_ID_GET, 0, 0, 0, 0, 0, 0, 0);
+		if (smc_args._regs[TSP_ARG0] != FFA_SUCCESS_SMC32) {
+			ERROR("TSP could not get own ID (0x%llx) on core%d\n",
+			      smc_args._regs[2], linear_id);
+			panic();
+		}
+
+		tsp_id = smc_args._regs[2];
+
+		return set_smc_args(FFA_MSG_SEND_DIRECT_RESP_SMC32,
+				    tsp_id << FFA_DIRECT_MSG_SOURCE_SHIFT |
+				    spmc_id,
+				    FFA_DIRECT_FRAMEWORK_MSG_MASK |
+				    (FFA_PM_MSG_PM_RESP & FFA_PM_MSG_MASK),
+				    0, 0, 0, 0, 0);
+	}
+#else
 	/* Indicate to the SPD that we have completed this request */
 	return set_smc_args(TSP_OFF_DONE, 0, 0, 0, 0, 0, 0, 0);
+#endif
 }
 
 /*******************************************************************************
@@ -449,3 +561,63 @@ tsp_args_t *tsp_abort_smc_handler(uint64_t func,
 {
 	return set_smc_args(TSP_ABORT_DONE, 0, 0, 0, 0, 0, 0, 0);
 }
+
+#if SPMC_AT_EL3
+/*******************************************************************************
+ * This function implements the event loop for handling FF-A ABI invocations.
+ ******************************************************************************/
+tsp_args_t *tsp_event_loop(uint64_t arg0,
+			   uint64_t arg1,
+			   uint64_t arg2,
+			   uint64_t arg3,
+			   uint64_t arg4,
+			   uint64_t arg5,
+			   uint64_t arg6,
+			   uint64_t arg7)
+{
+	uint64_t smc_fid = arg0;
+
+	/* Panic if the SPMC did not forward an FF-A call */
+	if(!is_ffa_fid(smc_fid))
+		panic();
+
+	switch (smc_fid) {
+	case FFA_INTERRUPT:
+		/*
+		 * IRQs were enabled upon re-entry into the TSP. The interrupt
+		 * must have been handled by now. Return to the SPMC indicating
+		 * the same.
+		 */
+		return set_smc_args(FFA_MSG_WAIT, 0, 0, 0, 0, 0, 0, 0);
+
+	case FFA_MSG_SEND_DIRECT_REQ_SMC32:
+		/*
+		 * Check if it is a power management message from the SPMC to
+		 * turn off this cpu else barf for now.
+		 */
+		if (FFA_SENDER(arg1) != spmc_id)
+			break;
+
+		/* Check it is a framework message */
+		if (!(arg2 & FFA_DIRECT_FRAMEWORK_MSG_MASK))
+			break;
+
+		/* Check it is a PM request message */
+		if ((arg2 & FFA_PM_MSG_MASK) != FFA_PM_MSG_PSCI_REQ)
+			break;
+
+		/* Check it is a PSCI CPU_OFF request */
+		if (arg3 != PSCI_CPU_OFF)
+			break;
+
+		/* Everything checks out. Do the needful */
+		return tsp_cpu_off_main(arg0, arg1, arg2, arg3,
+					arg4, arg5, arg6, arg7);
+	default:
+		break;
+	}
+
+	INFO("%s: Unsupported FF-A FID (0x%llu)\n", __func__, smc_fid);
+	panic();
+}
+#endif /* SPMC_AT_EL3*/

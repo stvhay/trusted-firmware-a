@@ -167,9 +167,29 @@ func tsp_entrypoint _align=3
 	/* ---------------------------------------------
 	 * Jump to main function.
 	 * ---------------------------------------------
-	 */
+	*/
+#if SPMC_AT_EL3
+	adr	x0, tsp_cpu_on_entry
 	bl	tsp_main
+#endif
 
+#if SPMC_AT_EL3
+loop:
+	/* ---------------------------------------------
+	 * Tell SPMD that we are done initialising.
+	 * Also turn off FIQ interrupts to avoid
+	 * preemption in case EL3 SPMC delegates an IRQ
+	 * next or a managed exit. Lastly, turn on IRQs
+	 * so that they can be handled immediately upon
+	 * re-entry
+	 * ---------------------------------------------
+	 */
+	msr	daifset, #DAIF_FIQ_BIT
+	msr	daifclr, #DAIF_IRQ_BIT
+	restore_args_call_smc
+	bl	tsp_event_loop
+	b	loop
+#else
 	/* ---------------------------------------------
 	 * Tell TSPD that we are done initialising
 	 * ---------------------------------------------
@@ -180,6 +200,7 @@ func tsp_entrypoint _align=3
 
 tsp_entrypoint_panic:
 	b	tsp_entrypoint_panic
+#endif
 endfunc tsp_entrypoint
 
 
@@ -303,8 +324,16 @@ func tsp_cpu_on_entry
 	 * ---------------------------------------------
 	 */
 	bl	tsp_cpu_on_main
+#if SPMC_AT_EL3
+	/* ---------------------------------------------
+	 * Jump to the main event loop to return to EL3
+	 * and be ready for the next request on this cpu
+	 * ---------------------------------------------
+	 */
+	b	loop
+#else
 	restore_args_call_smc
-
+#endif
 	/* Should never reach here */
 tsp_cpu_on_entry_panic:
 	b	tsp_cpu_on_entry_panic

@@ -91,8 +91,18 @@ int32_t tsp_common_int_handler(void)
 
 	/* TSP can only handle the secure physical timer interrupt */
 	if (id != TSP_IRQ_SEC_PHY_TIMER)
+#if SPMC_AT_EL3
+	{
+		/*
+		 * With FF-A an FIQ should not fire in the TSP, so panic if it
+		 * does.
+		 */
+		INFO("Unexpected interrupt id %u\n", id);
+		panic();
+	}
+#else
 		return tsp_handle_preemption();
-
+#endif
 	/*
 	 * Acknowledge and handle the secure timer interrupt. Also sanity check
 	 * if it has been preempted by another interrupt through an assertion.

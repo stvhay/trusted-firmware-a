@@ -147,7 +147,11 @@ tsp_args_t *tsp_system_off_main(uint64_t arg0,
 				uint64_t arg6,
 				uint64_t arg7);
 
+#if SPMC_AT_EL3
+tsp_args_t *tsp_main(uintptr_t secondary_ep);
+#else
 uint64_t tsp_main(void);
+#endif
 #endif /* __ASSEMBLER__ */
 
 #endif /* TSP_PRIVATE_H */
