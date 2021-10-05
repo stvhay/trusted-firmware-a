@@ -1,0 +1,284 @@
+--------------------------------------------------------------------------
+Disclaimer: This branch contains prototype code which is for demonstrative
+purposes only and to serve as proof of concept. It is designed to allow
+prototyping of new features and any productization paths if taken
+forward would be delivered through the master branch.
+--------------------------------------------------------------------------
+
+Getting Started
+===============
+
+These instructions will help to recreate the FF-A prototype running the SPMC in EL3.
+
+The end goal is to run a set of tests from a FF-A Test Driver via a userspace application
+to demonstrate functionality of the SPMC with the help of a single bare metal MP
+Partition running in S-EL1 and a logical partition running in EL3 alongside the SPMC on
+the AEM FVP Platform.
+
+Steps to clone the relevant repos
+=================================
+
+Note: These set of instructions assume you have a "Base Directory" where the
+various repositories can be checked out to.
+
+BASE_DIR=$(pwd)
+mkdir $BASE_DIR/out
+
+ATF_FFA_REL_PROTO_REPO=https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git
+ATF_FFA_EL3_SPMC_PROTO_BRANCH=topics/ffa_el3_spmc
+
+LINUX_FFA_EL3_SPMC_PROTO_REPO=https://git.kernel.org/pub/scm/linux/kernel/git/sudeep.holla/linux.git
+LINUX_FFA_EL3_SPMC_PROTO_BRANCH=ffa_el3_spmc
+
+
+# Clone Trusted Firmware-A Repo:
+git clone $ATF_FFA_REL_PROTO_REPO trusted-firmware-a
+cd $BASE_DIR/trusted-firmware-a
+git checkout $ATF_FFA_EL3_SPMC_PROTO_BRANCH
+cd $BASE_DIR
+
+# Clone Linux Kernel
+git clone $LINUX_FFA_EL3_SPMC_PROTO_REPO linux_kernel
+cd $BASE_DIR/linux_kernel
+git checkout $LINUX_FFA_EL3_SPMC_PROTO_BRANCH
+cd $BASE_DIR
+
+
+
+Prerequisites
+=============
+To exercise the tests in this prototype we require some prebuilt binaries. In testing these binaries have
+been sourced from the OP-TEE build system however any such images should work. For the purposes of these
+instructions they assume the following binaries are available in a $PREBUILTS_PATH directory:
+
+- EDK2 binary (FVP_AARCH64_EFI.fd)
+- Linux filesystem (rootfs.cpio.gz)
+- UEFI ram disk (boot-fat.uefi.img)
+
+Download FVP
+------------
+
+Download Armv8-A Base RevC AEM FVP from:
+https://developer.arm.com/tools-and-software/simulation-models/fixed-virtual-platforms/arm-ecosystem-models
+
+Extract into the `fvp` directory (the final file path should be
+$BASE_DIR/fvp/Base_RevC_AEMv8A_pkg/...)
+
+Toolchains
+----------
+The instructions expects aarch64 toolchain to be make available with the use of the CROSS_COMPILE variable e.g.
+export CROSS_COMPILE=aarch64-linux-gnu-
+
+Tested with gcc version 9.2.1 20191025
+
+
+Build Instructions
+==================
+
+TF-A SPMC / TSP
+---------------
+# Set our file paths appropriately.
+export TF_A_PATH=$BASE_DIR/trusted-firmware-a
+export OUT=$BASE_DIR/out
+
+export BL33_BIN=$PREBUILTS_PATH/FVP_AARCH64_EFI.fd
+export SPMC_MANIFEST_FILE=$TF_A_PATH/plat/arm/board/fvp/fdts/fvp_spmc_el3_manifest.dts
+
+export LOG_LEVEL=40 (Default info output, additional logging e.g. SMC prints available at 50 (Verbose))
+
+make realclean
+
+make -j16 CROSS_COMPILE=$CROSS_COMPILE \
+SPD=spmd \
+SPMC_AT_EL3=1 \
+CTX_INCLUDE_EL2_REGS=0 \
+SPMD_SPM_AT_SEL2=0 \
+EL3_EXCEPTION_HANDLING=1 \
+PLAT=fvp \
+BL33=$BL33_BIN \
+DEBUG=1 \
+LOG_LEVEL=$LOG_LEVEL \
+ARM_SPMC_MANIFEST_DTS=$SPMC_MANIFEST_FILE \
+ARM_ARCH_MINOR=4 \
+FVP_DT_PREFIX=fvp-base-gicv3-psci-1t \
+all fip
+
+# Copy our binaries and DTB to our output folder
+cp $TF_A_PATH/build/fvp/debug/fip.bin $OUT/fip.bin
+cp $TF_A_PATH/build/fvp/debug/bl1.bin $OUT/bl1.bin
+cp $TF_A_PATH/build/fvp/debug/bl31.bin $OUT/TSP.bin
+cp $$TF_A_PATH/build/fvp/debug/fdts/fvp-base-gicv3-psci-1t.dtb fvp-base-gicv3-psci-1t.dtb $OUT/fvp-base-gicv3-psci-1t.dtb
+
+
+Linux
+------
+Ensure that FFA support is enabled in the kernel config (CONFIG_ARM_FFA_TRANSPORT=y).
+
+make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE defconfig -j$NO_CPUS
+make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE -j$NO_CPUS
+
+cp arch/arm64/boot/Image $OUT/
+
+Assembling Images
+-----------------
+ - Copy the prebuilt userspace test binary ($TF_A_PATH/ioctl) to your filesystem. This is requried to interact
+   with the test FFA driver.
+ - Copy the modified filesystem image, linux kernel and FVP DTB to the UEFI ram disk ($OUT/boot-fat.uefi.img)
+
+
+Launching the FVP
+=================
+The FVP can then be launched with the following command. You should be able to observe output from the
+normal world, trusted firmware and S-EL1 TSP each on terminals 0, 1 & 2 respectively.
+
+$BASE_DIR/fvp/Base_RevC_AEMv8A_pkg/models/Linux64_GCC-6.4/FVP_Base_RevC-2xAEMvA \
+-C pctl.startup=0.0.0.0 \
+-C bp.secure_memory=1 \
+-C cluster0.NUM_CORES=4 \
+-C cluster1.NUM_CORES=4 \
+-C cache_state_modelled=0 \
+-C bp.pl011_uart0.untimed_fifos=1 \
+-C bp.pl011_uart0.unbuffered_output=1 \
+-C bp.pl011_uart1.untimed_fifos=1 \
+-C bp.pl011_uart1.unbuffered_output=1 \
+-C bp.pl011_uart0.out_file=$OUT/uart0.log \
+-C bp.pl011_uart1.out_file=$OUT/uart1.log \
+-C bp.pl011_uart2.out_file=$OUT/uart2.log \
+-C bp.pl011_uart3.out_file=$OUT/uart3.log \
+-C bp.vis.disable_visualisation=0 \
+-C bp.secureflashloader.fname=$OUT/bl1.bin \
+-C bp.flashloader0.fname=$OUT/fip.bin \
+-C bp.ve_sysregs.mmbSiteDefault=0 \
+-C bp.ve_sysregs.exit_on_shutdown=1 \
+-C cluster0.has_arm_v8-4=1 \
+-C cluster1.has_arm_v8-4=1 \
+-C bp.virtioblockdevice.image_path=$OUT/boot-fat.uefi.img
+
+
+Running the tests
+=================
+Once a shell has been reached the `ioctl` userspace application can be used to run some basic tests to verify
+the system has started correctly.
+
+The following tests are available:
+
+    1) Echo a message to the Physical SP and Back using direct req/resp
+    2) Send a direct request to the physical SP and ask it to send it's
+       own direct_req to the Logical SP and relay the message back again.
+    3) Share a single page of memory with the SP and ensure the contents
+       can be modified.
+    4) Share multiple pages requiring the memory descriptor to be split
+       over multiple invocations.
+    5) Lend a single page of memory with the SP and ensure the contents
+       can be modified.
+    6) Lend multiple pages requiring the memory descriptor to be split
+       over multiple invocations.
+    255) Run all of the above test cases.
+
+Usage: /path/to/ioctl <test_num>
+
+
+Example Output
+==============
+
+Booting
+-------
+Expected output from TF-A on uart0:
+```
+INFO:    BL31: Initialising Exception Handling Framework
+INFO:    BL31: Initializing runtime services
+INFO:    Logical Secure Partition init start.
+INFO:    LSP: Init function called.
+INFO:    Secure Partition initialized.
+INFO:    Secure Partition context setup start.
+INFO:    Secure Partition setup done.
+INFO:    BL31: Initializing logical partition structures
+INFO:    BL31: Initializing BL32
+INFO:    Secure Partition (0x8001) init start.
+INFO:    S-EL1 SP context on core0 is in 1 state
+INFO:    S-EL1 SP context on core0 is in 0 state
+INFO:    Secure Partition initialized.
+INFO:    BL31: Preparing for EL3 exit to normal world
+INFO:    Entry point address = 0x88000000
+INFO:    SPSR = 0x3c9
+UEFI firmware (version  built at 08:58:20 on Oct  1 2019)
+...
+```
+Expected output from the SPMC on uart1:
+```
+INFO:    SP (0x8001) init start on core1.
+INFO:    SP (0x8001) init start on core2.
+INFO:    SP (0x8001) init start on core3.
+INFO:    SP (0x8001) init start on core4.
+INFO:    SP (0x8001) init start on core5.
+INFO:    SP (0x8001) init start on core6.
+INFO:    SP (0x8001) init start on core7.
+```
+
+
+Expected output from the TSP on uart2:
+```
+NOTICE:  TSP: v2.5(debug):v2.5-453-gc6a2750df
+NOTICE:  TSP: Built : 17:23:51, Oct  5 2021
+INFO:    TSP: Total memory base : 0xff200000
+INFO:    TSP: Total memory size : 0x1b000 bytes
+INFO:    TSP FF-A endpoint id = 0x8001
+INFO:    TSP: cpu 0x81000000: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81000100 turned on
+INFO:    TSP: cpu 0x81000100: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81000200 turned on
+INFO:    TSP: cpu 0x81000200: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81000300 turned on
+INFO:    TSP: cpu 0x81000300: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81010000 turned on
+INFO:    TSP: cpu 0x81010000: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81010100 turned on
+INFO:    TSP: cpu 0x81010100: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81010200 turned on
+INFO:    TSP: cpu 0x81010200: 1 smcs, 1 erets 1 cpu on requests
+INFO:    TSP: cpu 0x81010300 turned on
+INFO:    TSP: cpu 0x81010300: 1 smcs, 1 erets 1 cpu on requests
+```
+
+Test Cases
+----------
+Linux Output:
+```
+# ./ioctl 255
+[15284.959068] Completed Test Case: 1
+[15284.959155] Test Executed Successfully
+[15284.959155]
+[15284.959355] Completed Test Case: 2
+[15284.959477] Test Executed Successfully
+[15284.959477]
+[15284.961055] Verified 1 constituents successfully
+[15284.961155] Completed Test Case: 3
+[15284.961255] Test Executed Successfully
+[15284.961255]
+[15285.219655] Verified 256 constituents successfully
+[15285.219841] Completed Test Case: 4
+[15285.220055] Test Executed Successfully
+[15285.220055]
+[15285.221510] Verified 1 constituents successfully
+[15285.221621] Completed Test Case: 5
+[15285.221750] Test Executed Successfully
+[15285.221750]
+[15285.479955] Verified 256 constituents successfully
+[15285.480088] Completed Test Case: 6
+[15285.480255] Test Executed Successfully
+[15285.480255]
+[15285.480355] 0 Tests Failed
+[15285.480355]
+[15285.480555] Exiting Test Application -  Total Failures: 0
+```
+
+S-EL1 SP Output:
+```
+INFO:    TSP Tests: echo message--
+INFO:    TSP Tests: Relaying message--
+INFO:    TSP Tests: Memory Share Request--
+INFO:    TSP Tests: Memory Share Request--
+INFO:    TSP Tests: Memory Lend Request--
+INFO:    TSP Tests: Memory Lend Request--
+```
+
