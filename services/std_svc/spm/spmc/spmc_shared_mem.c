@@ -469,6 +469,7 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 			  uint64_t flags)
 {
 	struct mailbox *mbox = spmc_get_mbox_desc(flags);
+	int ret;
 	struct spmc_shmem_obj *obj = NULL;
 	const struct ffa_mtd *req = mbox->tx_buffer;
 	struct ffa_mtd *resp = mbox->rx_buffer;
@@ -491,54 +492,58 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 
 	spin_lock(&mbox->lock);
 	if (mbox->state != MAILBOX_STATE_EMPTY) {
-		spin_unlock(&mbox->lock);
-		WARN("%s: RX Buffer is full! \n", __func__);
-		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
+		WARN("%s: RX Buffer is full! %d\n", __func__, mbox->state);
+		ret = FFA_ERROR_DENIED;
+		goto err;
 	}
-	mbox->state = MAILBOX_STATE_FULL;
-	spin_unlock(&mbox->lock);
-
 
 	if (fragment_length != total_length) {
 		NOTICE("%s: fragmented retrieve request not supported\n",
 		       __func__);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	/* Ensure endpoint count is 1, additional receivers not currently supported */
 	if (req->emad_count != 1) {
 		NOTICE("%s: unsupported retrieve descriptor count: %u\n",
 		       __func__, req->emad_count);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (total_length < sizeof(*req)) {
 		NOTICE("%s: invalid length %u < %zu\n", __func__, total_length,
 		       sizeof(*req));
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	obj = spmc_shmem_obj_lookup(&spmc_shmem_obj_state, req->handle);
 	if (!obj) {
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (obj->desc_filled != obj->desc_size) {
 		WARN("%s: incomplete object desc filled %zu < size %zu\n",
 		       __func__, obj->desc_filled, obj->desc_size);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (req->emad_count && req->sender_id != obj->desc.sender_id) {
 		NOTICE("%s: wrong sender id 0x%x != 0x%x\n",
 		       __func__, req->sender_id, obj->desc.sender_id);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (req->emad_count && req->tag != obj->desc.tag) {
 		NOTICE("%s: wrong tag 0x%llx != 0x%llx\n",
 		       __func__, req->tag, obj->desc.tag);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (req->flags && ((req->flags & FFA_MTD_FLAG_TYPE_MASK) !=
@@ -549,7 +554,8 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 		 */
 		NOTICE("%s: wrong mem transaction flags %x != %x\n", __func__,
 		       req->flags, obj->desc.flags);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	if (req->flags && !(req->flags == FFA_MTD_FLAG_TYPE_SHARE_MEMORY ||
@@ -559,7 +565,8 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 		 * it supports no other flags.
 		 */
 		NOTICE("%s: invalid flags 0x%x\n", __func__, req->flags);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
 	/* TODO: support more than one endpoint ids */
@@ -569,8 +576,12 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 		NOTICE("%s: wrong receiver id 0x%x != 0x%x\n",
 		       __func__, req->emad[0].mapd.endpoint_id,
 		       obj->desc.emad[0].mapd.endpoint_id);
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
+
+	mbox->state = MAILBOX_STATE_FULL;
+	spin_unlock(&mbox->lock);
 
 	if (req->emad_count) {
 		obj->in_use++;
@@ -580,6 +591,9 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 	memcpy(resp, &obj->desc, copy_size);
 	SMC_RET8(handle, FFA_MEM_RETRIEVE_RESP, obj->desc_size,
 		 copy_size, 0, 0, 0, 0, 0);
+err:
+	spin_unlock(&mbox->lock);
+	return spmc_ffa_error_return(handle, ret);
 }
 
 /**
