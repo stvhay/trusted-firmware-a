@@ -491,6 +491,7 @@ spmc_ffa_mem_retrieve_req(uint32_t smc_fid,
 
 	spin_lock(&mbox->lock);
 	if (mbox->state != MAILBOX_STATE_EMPTY) {
+		spin_unlock(&mbox->lock);
 		WARN("%s: RX Buffer is full! \n", __func__);
 		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
 	}
@@ -643,6 +644,7 @@ long spmc_ffa_mem_frag_rx(uint32_t smc_fid,
 
 	spin_lock(&mbox->lock);
 	if (mbox->state != MAILBOX_STATE_EMPTY) {
+		spin_unlock(&mbox->lock);
 		WARN("%s: RX Buffer is full! \n", __func__);
 		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
 	}

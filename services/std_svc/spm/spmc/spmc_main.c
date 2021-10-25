@@ -210,6 +210,7 @@ static uint64_t partition_info_get_handler(uint32_t smc_fid,
 
 	spin_lock(&mbox->lock);
 	if (mbox->state != MAILBOX_STATE_EMPTY) {
+		spin_unlock(&mbox->lock);
 		return spmc_ffa_error_return(handle, FFA_ERROR_BUSY);
 	}
 	mbox->state = MAILBOX_STATE_FULL;
@@ -739,6 +740,7 @@ static uint64_t rx_release_handler(uint32_t smc_fid,
 	spin_lock(&mbox->lock);
 
 	if (mbox->state != MAILBOX_STATE_FULL) {
+		spin_unlock(&mbox->lock);
 		return spmc_ffa_error_return(handle, FFA_ERROR_DENIED);
 	}
 	mbox->state = MAILBOX_STATE_EMPTY;
