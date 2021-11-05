@@ -185,11 +185,13 @@ static uint64_t partition_info_get_handler(uint32_t smc_fid,
 					   void *handle,
 					   uint64_t flags)
 {
-	int index, partition_count;
-	struct ffa_partition_info *info;
+	int index, partition_count, ret;
+	struct ffa_partition_info *partitions;
+	struct ffa_partition_info *desc;
 	el3_lp_desc_t *el3_lp_descs = get_el3_lp_array();
 	struct mailbox *mbox;
 	uint32_t uuid[4];
+	bool is_null_uuid;
 	uuid[0] = x1;
 	uuid[1] = x2;
 	uuid[2] = x3;
@@ -206,25 +208,26 @@ static uint64_t partition_info_get_handler(uint32_t smc_fid,
 		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
 	}
 
-	info = (struct ffa_partition_info *) mbox->rx_buffer;
+	partitions = (struct ffa_partition_info *) mbox->rx_buffer;
 
 	spin_lock(&mbox->lock);
 	if (mbox->state != MAILBOX_STATE_EMPTY) {
-		spin_unlock(&mbox->lock);
-		return spmc_ffa_error_return(handle, FFA_ERROR_BUSY);
+		ret = FFA_ERROR_BUSY;
+		goto err;
 	}
-	mbox->state = MAILBOX_STATE_FULL;
-	spin_unlock(&mbox->lock);
 
 	partition_count = 0;
+	is_null_uuid = (uuid[0] == 0 && uuid[1] == 0 && uuid[2] == 0 && uuid[3] == 0);
+
 	/* Deal with Logical Partitions. */
 	for (index = 0; index < EL3_LP_DESCS_NUM; index++) {
-		if (compare_uuid(uuid, el3_lp_descs[index].uuid) ||
-			(uuid[0] == 0 && uuid[1] == 0 && uuid[2] == 0 && uuid[3] == 0)) {
+		if (compare_uuid(uuid, el3_lp_descs[index].uuid) || is_null_uuid) {
 			/* Found a matching UUID, populate appropriately. */
-			info[partition_count].ep_id = el3_lp_descs[index].sp_id;
-			info[partition_count].execution_ctx_count = PLATFORM_CORE_COUNT;
-			info[partition_count].properties = el3_lp_descs[index].properties;
+			desc = &partitions[partition_count];
+
+			desc->ep_id = el3_lp_descs[index].sp_id;
+			desc->execution_ctx_count = PLATFORM_CORE_COUNT;
+			desc->properties = el3_lp_descs[index].properties;
 			partition_count++;
 		}
 	}
@@ -232,23 +235,33 @@ static uint64_t partition_info_get_handler(uint32_t smc_fid,
 	/* Deal with physical SP's. */
 	for(index = 0; index < SECURE_PARTITION_COUNT; index++){
 		unsigned int execution_ctx_count;
-		if (compare_uuid(uuid, sp_desc[index].uuid) ||
-			(uuid[0] == 0 && uuid[1] == 0 && uuid[2] == 0 && uuid[3] == 0)) {
+		if (compare_uuid(uuid, sp_desc[index].uuid) || is_null_uuid) {
 			/* Found a matching UUID, populate appropriately. */
-			info[partition_count].ep_id = sp_desc[index].sp_id;
+			desc = &partitions[partition_count];
+
+			desc->ep_id = sp_desc[index].sp_id;
 			/* Use the EL to determine the number of execution contexts */
 			execution_ctx_count = (sp_desc[index].runtime_el == EL0) ? 1: PLATFORM_CORE_COUNT;
-			info[partition_count].execution_ctx_count = execution_ctx_count;
-			info[partition_count].properties = sp_desc[index].properties;
+			desc->execution_ctx_count = execution_ctx_count;
+			desc->properties = sp_desc[index].properties;
 			partition_count++;
 		}
 	}
 
 	if (partition_count == 0) {
-		return spmc_ffa_error_return(handle, FFA_ERROR_INVALID_PARAMETER);
+		ret = FFA_ERROR_INVALID_PARAMETER;
+		goto err;
 	}
 
+	mbox->state = MAILBOX_STATE_FULL;
+	spin_unlock(&mbox->lock);
+
 	SMC_RET3(handle, FFA_SUCCESS_SMC32, 0, partition_count);
+
+err:
+	spin_unlock(&mbox->lock);
+	return spmc_ffa_error_return(handle, ret);
+
 }
 
 static uint64_t direct_req_smc_handler(uint32_t smc_fid,
