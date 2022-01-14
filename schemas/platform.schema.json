@@ -7,6 +7,14 @@
     "target": {
       "type": "string",
       "pattern": "^(?![0-9])([a-z0-9]+-?)+(?<!-)$"
+    },
+    "variants": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(?![0-9])([A-Z0-9][a-z0-9]*-?)+(?<!-)$": {
+          "type": "object"
+        }
+      }
     }
   }
 }

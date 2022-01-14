@@ -86,6 +86,19 @@ arm_config_option(
     TYPE PATH)
 
 #
+# Retrieve the list of variants for the configured platform, and let the user
+# configure the variant.
+#
+
+tfa_platform_variants(variants
+    PLATFORM ${TFA_PLATFORM})
+
+arm_config_option(
+    NAME TFA_PLATFORM_VARIANT
+    HELP "Platform variant to build."
+    STRINGS ${variants})
+
+#
 # We're done with very early setup, so we can now create the project. This will
 # do some of the automatic compiler detection, which we need for setting up
 # further configuration options.

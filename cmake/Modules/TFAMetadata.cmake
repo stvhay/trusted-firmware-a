@@ -33,6 +33,14 @@ Return the path to the platform ``<platform>`` in ``<out-var>``.
     tfa_platform_target(<out-var> PLATFORM <platform>)
 
 Return the CMake target name for the platform ``<platform>`` in ``<out-var>``.
+
+.. command:: tfa_platform_variants
+
+.. code-block:: cmake
+
+    tfa_platform_variants(<out-var> PLATFORM <platform>)
+
+Return the list of variants for the platform ``<platform>`` in ``<out-var>``.
 #]=======================================================================]
 
 include_guard()
@@ -182,6 +190,15 @@ tfa_json_getter(tfa_platform_metadata_target
     JSON "${global-metadata}" PARENT tfa_platform_metadata
     PATH "target")
 
+tfa_json_getter(tfa_platform_metadata_variants
+    JSON "${global-metadata}" PARENT tfa_platform_metadata
+    PATH "variants")
+
+tfa_json_getter(tfa_platform_metadata_variants_variant
+    JSON "${global-metadata}" PARENT tfa_platform_metadata_variants
+    PATH "@VARIANT@" ARGUMENTS VARIANT
+    ERROR_MESSAGE "No such variant `@VARIANT@` for the @PLATFORM@ platform.")
+
 #
 # External platform metadata API.
 #
@@ -189,3 +206,7 @@ tfa_json_getter(tfa_platform_metadata_target
 tfa_json_getter(tfa_platform_target
     JSON "${global-metadata}" PARENT tfa_platform_metadata_target
     DECODE STRING)
+
+tfa_json_getter(tfa_platform_variants
+    JSON "${global-metadata}" PARENT tfa_platform_metadata_variants
+    DECODE MEMBERS)
