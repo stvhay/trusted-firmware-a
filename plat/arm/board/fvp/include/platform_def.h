@@ -78,6 +78,11 @@
  * plat_arm_mmap array defined for each BL stage.
  */
 #if defined(IMAGE_BL31)
+# if DRTM_SUPPORT
+# define DRTM_SUPPORT_ADDED_XLAT_TABLES 1
+# else
+# define DRTM_SUPPORT_ADDED_XLAT_TABLES 0
+# endif
 # if SPM_MM
 #  define PLAT_ARM_MMAP_ENTRIES		10
 #  define MAX_XLAT_TABLES		9
@@ -88,7 +93,7 @@
 #  if USE_DEBUGFS
 #   define MAX_XLAT_TABLES		8
 #  else
-#   define MAX_XLAT_TABLES		7
+#   define MAX_XLAT_TABLES		(7 + DRTM_SUPPORT_ADDED_XLAT_TABLES)
 #  endif
 # endif
 #elif defined(IMAGE_BL32)
@@ -176,7 +181,11 @@
 #elif defined(IMAGE_BL2U)
 # define PLATFORM_STACK_SIZE		UL(0x400)
 #elif defined(IMAGE_BL31)
+# if DRTM_SUPPORT
+#  define PLATFORM_STACK_SIZE		UL(0x1000)
+# else
 #  define PLATFORM_STACK_SIZE		UL(0x800)
+# endif
 #elif defined(IMAGE_BL32)
 # define PLATFORM_STACK_SIZE		UL(0x440)
 #endif

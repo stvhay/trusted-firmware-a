@@ -1,3 +1,12 @@
+--------------------------------------------------------------------------
+Disclaimer:  This branch contains Arm DRTM prototype code that is only
+demonstrative and proof of concept.  It is designed for experimentation
+with Arm DRTM.  Any productization should only use code delivered through
+the master branch, and should not rely on the particular code structure of
+this prototype or any other feature herein that is not part of the Arm
+DRTM specification.
+--------------------------------------------------------------------------
+
 Trusted Firmware-A
 ==================
 

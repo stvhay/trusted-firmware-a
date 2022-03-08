@@ -377,3 +377,7 @@ endif
 # dynamically if TRUSTED_BOARD_BOOT is set.
 DYN_DISABLE_AUTH	:=	1
 endif
+
+ifeq (${DRTM_SUPPORT}, 1)
+BL31_SOURCES	+= plat/arm/board/fvp/fvp_drtm_dma_prot.c
+endif

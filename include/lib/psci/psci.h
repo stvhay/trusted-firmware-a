@@ -196,17 +196,6 @@ static inline unsigned int psci_check_power_state(unsigned int power_state)
 }
 
 /*
- * These are the states reported by the PSCI_AFFINITY_INFO API for the specified
- * CPU. The definitions of these states can be found in Section 5.7.1 in the
- * PSCI specification (ARM DEN 0022C).
- */
-typedef enum {
-	AFF_STATE_ON = U(0),
-	AFF_STATE_OFF = U(1),
-	AFF_STATE_ON_PENDING = U(2)
-} aff_info_state_t;
-
-/*
  * These are the power states reported by PSCI_NODE_HW_STATE API for the
  * specified CPU. The definitions of these states can be found in Section 5.15.3
  * of PSCI specification (ARM DEN 0022C).

@@ -1022,3 +1022,39 @@ int psci_stop_other_cores(unsigned int wait_ms,
 
 	return PSCI_E_SUCCESS;
 }
+
+/*******************************************************************************
+ * Return the index of the core that is not turned off, other than the current
+ * core, or PLATFORM_CORE_COUNT if there is no such core.
+ ******************************************************************************/
+unsigned int psci_is_last_on_core_safe(void)
+{
+	unsigned int this_core = plat_my_core_pos();
+	unsigned int core_not_off = PLATFORM_CORE_COUNT;
+	unsigned int parent_nodes[PLAT_MAX_PWR_LVL + 1] = {0};
+
+	/*
+	 * Lock all PSCI state to remove races that could result in false positives,
+	 * in other words, to check atomically w.r.t. cores turning on.
+	 *
+	 * TODO: This logic must be reviewed further by someone knowledgeable of
+	 * the PSCI TF-A implementation.
+	 */
+	psci_get_parent_pwr_domain_nodes(this_core, PLAT_MAX_PWR_LVL, parent_nodes);
+	psci_acquire_pwr_domain_locks(PLAT_MAX_PWR_LVL, parent_nodes);
+
+	for (unsigned int core = 0U; core < psci_plat_core_count; core++) {
+		if (core == this_core) {
+			continue;
+		}
+
+		if (psci_get_aff_info_state_by_idx(core) != AFF_STATE_OFF) {
+			core_not_off = core;
+			break;
+		}
+	}
+
+	psci_release_pwr_domain_locks(PLAT_MAX_PWR_LVL, parent_nodes);
+
+	return core_not_off;
+}

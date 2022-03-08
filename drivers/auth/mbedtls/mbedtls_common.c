@@ -13,7 +13,7 @@
 
 #include <common/debug.h>
 #include <drivers/auth/mbedtls/mbedtls_common.h>
-#include <drivers/auth/mbedtls/mbedtls_config.h>
+#include MBEDTLS_CONFIG_FILE
 #include <plat/common/platform.h>
 
 static void cleanup(void)
@@ -36,7 +36,16 @@ void mbedtls_init(void)
 		if (atexit(cleanup))
 			panic();
 
+#if DRTM_SUPPORT && defined(IMAGE_BL31)
+		/*
+		 * XXX-LPT: Short-circuit the mbedtls heap linkage for DRTM.
+		 * The heap linkage should ideally be integrated with the other sub-
+		 * systems that require it (e.g. trusted board boot).
+		 */
+		err = get_mbedtls_heap_helper(&heap_addr, &heap_size);
+#else
 		err = plat_get_mbedtls_heap(&heap_addr, &heap_size);
+#endif
 
 		/* Ensure heap setup is proper */
 		if (err < 0) {

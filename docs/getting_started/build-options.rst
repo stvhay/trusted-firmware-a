@@ -200,6 +200,9 @@ Common build options
    that do not implement FEAT_MTPMU. For more information on FEAT_MTPMU,
    check the latest Arm ARM.
 
+-  ``DRTM_SUPPORT``: Boolean to enable support for Dynamic Root of Trust for
+   Measurement (DRTM).  Defaults to disabled.
+
 -  ``DYN_DISABLE_AUTH``: Provides the capability to dynamically disable Trusted
    Board Boot authentication at runtime. This option is meant to be enabled only
    for development platforms. ``TRUSTED_BOARD_BOOT`` flag must be set if this

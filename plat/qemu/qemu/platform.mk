@@ -222,3 +222,11 @@ $(eval $(call add_define,ARM_PRELOADED_DTB_BASE))
 
 # Do not enable SVE
 ENABLE_SVE_FOR_NS	:=	0
+
+ifeq ($(DRTM_SUPPORT), 1)
+BL31_SOURCES		+= \
+			drivers/arm/smmu/smmu_v3.c	\
+			plat/qemu/qemu/qemu_virt_drtm_dma_prot.c	\
+			plat/qemu/qemu/qemu_virt_drtm_res_tcb_hashes.c	\
+
+endif

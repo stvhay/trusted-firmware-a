@@ -263,6 +263,8 @@ DEFINE_SYSREG_RW_FUNCS(elr_el3)
 DEFINE_SYSREG_RW_FUNCS(mdccsr_el0)
 DEFINE_SYSREG_RW_FUNCS(dbgdtrrx_el0)
 DEFINE_SYSREG_RW_FUNCS(dbgdtrtx_el0)
+DEFINE_SYSREG_RW_FUNCS(sp_el1)
+DEFINE_SYSREG_RW_FUNCS(sp_el2)
 
 DEFINE_SYSOP_FUNC(wfi)
 DEFINE_SYSOP_FUNC(wfe)
@@ -567,7 +569,7 @@ static inline unsigned int get_current_el_maybe_constant(void)
 /*
  * Check if an EL is implemented from AA64PFR0 register fields.
  */
-static inline uint64_t el_implemented(unsigned int el)
+static inline uint64_t nonsecure_el_implemented(unsigned int el)
 {
 	if (el > 3U) {
 		return EL_IMPL_NONE;
@@ -577,6 +579,19 @@ static inline uint64_t el_implemented(unsigned int el)
 		return (read_id_aa64pfr0_el1() >> shift) & ID_AA64PFR0_ELX_MASK;
 	}
 }
+
+static inline uint64_t secure_el_implemented(unsigned int el)
+{
+	if (el == 2) {
+		unsigned int shift = ID_AA64PFR0_SEL2_SHIFT;
+
+		return (read_id_aa64pfr0_el1() >> shift) & ID_AA64PFR0_ELX_MASK;
+	} else {
+		return nonsecure_el_implemented(el);
+	}
+}
+
+#define el_implemented(el) nonsecure_el_implemented(el)
 
 /* Previously defined accesor functions with incomplete register names  */
 

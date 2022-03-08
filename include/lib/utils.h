@@ -21,6 +21,11 @@ typedef struct mem_region {
 	size_t nbytes;
 } mem_region_t;
 
+typedef struct p_mem_region {
+	unsigned long long base;
+	unsigned long long nbytes;
+} p_mem_region_t;
+
 /*
  * zero_normalmem all the regions defined in tbl.
  */

@@ -13,6 +13,7 @@
 #include <lib/pmf/pmf.h>
 #include <lib/psci/psci.h>
 #include <lib/runtime_instr.h>
+#include <services/drtm_svc.h>
 #include <services/sdei.h>
 #include <services/spm_mm_svc.h>
 #include <services/spmd_svc.h>
@@ -65,6 +66,12 @@ static int32_t std_svc_setup(void)
 #endif
 
 	trng_setup();
+
+#if DRTM_SUPPORT
+	if (drtm_setup() != 0) {
+		ret = 1;
+	}
+#endif
 
 	return ret;
 }
@@ -145,6 +152,11 @@ static uintptr_t std_svc_smc_handler(uint32_t smc_fid,
 #if TRNG_SUPPORT
 	if (is_trng_fid(smc_fid)) {
 		return trng_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle,
+#endif
+
+#if DRTM_SUPPORT
+	if (is_drtm_fid(smc_fid)) {
+		return drtm_smc_handler(smc_fid, x1, x2, x3, x4, cookie, handle,
 				flags);
 	}
 #endif

@@ -86,6 +86,9 @@ DISABLE_BIN_GENERATION		:= 0
 # compatibility.
 DISABLE_MTPMU			:= 0
 
+# Dynamic Root of Trust for Measurement support
+DRTM_SUPPORT		:= 0
+
 # Enable capability to disable authentication dynamically. Only meant for
 # development platforms.
 DYN_DISABLE_AUTH		:= 0

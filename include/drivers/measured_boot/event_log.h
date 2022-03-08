@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 #include <common/debug.h>
-#include <drivers/measured_boot/tcg.h>
 
 /*
  * Set Event Log debug level to one of:
@@ -72,19 +71,19 @@ typedef struct {
 				size_t log_size);
 } measured_boot_data_t;
 
-#define	ID_EVENT_SIZE	(sizeof(id_event_headers_t) + \
-			(sizeof(id_event_algorithm_size_t) * HASH_ALG_COUNT) + \
-			sizeof(id_event_struct_data_t))
+#define	ID_EVENT_SIZE	(sizeof(id_event_container_t) + \
+			(sizeof(id_event_alg_info_t) * HASH_ALG_COUNT) + \
+			sizeof(id_event_vendor_data_t))
 
 #define	LOC_EVENT_SIZE	(sizeof(event2_header_t) + \
-			sizeof(tpmt_ha) + TCG_DIGEST_SIZE + \
+			sizeof(tpmt_ha_t) + TCG_DIGEST_SIZE + \
 			sizeof(event2_data_t) + \
-			sizeof(startup_locality_event_t))
+			sizeof(startup_locality_event_data_t))
 
 #define	LOG_MIN_SIZE	(ID_EVENT_SIZE + LOC_EVENT_SIZE)
 
 #define EVENT2_HDR_SIZE	(sizeof(event2_header_t) + \
-			sizeof(tpmt_ha) + TCG_DIGEST_SIZE + \
+			sizeof(tpmt_ha_t) + TCG_DIGEST_SIZE + \
 			sizeof(event2_data_t))
 
 /* Functions' declarations */

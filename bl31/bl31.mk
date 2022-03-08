@@ -38,7 +38,8 @@ BL31_SOURCES		+=	bl31/bl31_main.c				\
 				services/std_svc/std_svc_setup.c		\
 				${PSCI_LIB_SOURCES}				\
 				${SPMD_SOURCES}					\
-				${SPM_SOURCES}
+				${SPM_SOURCES}					\
+				${MBEDTLS_SOURCES}
 
 ifeq (${DISABLE_MTPMU},1)
 BL31_SOURCES		+=	lib/extensions/mtpmu/aarch64/mtpmu.S
@@ -71,6 +72,35 @@ endif
 ifeq (${TRNG_SUPPORT},1)
 BL31_SOURCES		+=	services/std_svc/trng/trng_main.c	\
 				services/std_svc/trng/trng_entropy_pool.c
+endif
+
+ifeq (${DRTM_SUPPORT},1)
+# TODO-LPT: move this to a new drtm.mk
+BL31_SOURCES		+=	services/std_svc/drtm/drtm_main.c       \
+				services/std_svc/drtm/drtm_cache.c      \
+				services/std_svc/drtm/drtm_dma_prot.c   \
+				services/std_svc/drtm/drtm_measurements.c   \
+				services/std_svc/drtm/drtm_res_tcb_hashes.c   \
+				services/std_svc/drtm/drtm_remediation.c   \
+
+DRTM_SHA_ALG ?= 256
+
+MBEDTLS_CONFIG_FILE := \"../services/std_svc/drtm/drtm_mbedtls_config.h\"
+
+$(info Including drivers/auth/mbedtls/mbedtls_common.mk)
+include drivers/auth/mbedtls/mbedtls_common.mk
+
+$(info Including lib/tpm/tpm_lib.mk)
+include lib/tpm/tpm_lib.mk
+BL31_SOURCES		+=	${TPM_LIB_SOURCES}
+
+PLAT_XLAT_TABLES_DYNAMIC := 1
+
+$(eval $(call add_defines,\
+    $(sort \
+        PLAT_XLAT_TABLES_DYNAMIC \
+        DRTM_SHA_ALG \
+)))
 endif
 
 ifeq (${ENABLE_SPE_FOR_LOWER_ELS},1)
@@ -108,6 +138,7 @@ $(eval $(call assert_booleans,\
 	CRASH_REPORTING \
 	EL3_EXCEPTION_HANDLING \
 	SDEI_SUPPORT \
+	DRTM_SUPPORT \
 )))
 
 $(eval $(call add_defines,\
@@ -115,4 +146,5 @@ $(eval $(call add_defines,\
         CRASH_REPORTING \
         EL3_EXCEPTION_HANDLING \
         SDEI_SUPPORT \
+        DRTM_SUPPORT \
 )))

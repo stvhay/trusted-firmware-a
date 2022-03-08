@@ -13,9 +13,16 @@
 #include <common/debug.h>
 #include <drivers/auth/crypto_mod.h>
 #include <drivers/measured_boot/event_log.h>
+#include <lib/tpm/tpm_log.h>
 #include <mbedtls/md.h>
 
 #include <plat/common/platform.h>
+
+/*
+ * TODO: Remove dependency on private header, depend solely on
+ * lib/tpm/tpm_log.h instead.
+ */
+#include "../../lib/tpm/tpm_log_private.h"
 
 /* Event Log data */
 static uint8_t event_log[EVENT_LOG_SIZE];
@@ -35,17 +42,17 @@ static uintptr_t tos_fw_config_base;
 static uintptr_t nt_fw_config_base;
 
 /* TCG_EfiSpecIdEvent */
-static const id_event_headers_t id_event_header = {
-	.header = {
-		.pcr_index = PCR_0,
-		.event_type = EV_NO_ACTION,
+static const id_event_container_t id_event_header = {
+	.container = {
+		.pcr_index = TPM_PCR_0,
+		.event_type = TPM_LOG_EV_NO_ACTION,
 		.digest = {0},
-		.event_size = (uint32_t)(sizeof(id_event_struct_t) +
-				(sizeof(id_event_algorithm_size_t) *
+		.event_size = (uint32_t)(sizeof(__id_event_t) +
+				(sizeof(id_event_alg_info_t) *
 				HASH_ALG_COUNT))
 	},
 
-	.struct_header = {
+	.id_event_misc_data = {
 		.signature = TCG_ID_EVENT_SIGNATURE_03,
 		.platform_class = PLATFORM_CLASS_CLIENT,
 		.spec_version_minor = TCG_SPEC_VERSION_MINOR_TPM2,
@@ -62,13 +69,13 @@ static const event2_header_t locality_event_header = {
 		 * All EV_NO_ACTION events SHALL set
 		 * TCG_PCR_EVENT2.pcrIndex = 0, unless otherwise specified
 		 */
-		.pcr_index = PCR_0,
+		.pcr_index = TPM_PCR_0,
 
 		/*
 		 * All EV_NO_ACTION events SHALL set
 		 * TCG_PCR_EVENT2.eventType = 03h
 		 */
-		.event_type = EV_NO_ACTION,
+		.event_type = TPM_LOG_EV_NO_ACTION,
 
 		/*
 		 * All EV_NO_ACTION events SHALL set
@@ -82,7 +89,7 @@ static const event2_header_t locality_event_header = {
 
 /* Platform's table with platform specific image IDs, names and PCRs */
 static const image_data_t plat_images_data[] = {
-	{ BL2_IMAGE_ID, BL2_STRING, PCR_0 },		/* Reserved for BL2 */
+	{ BL2_IMAGE_ID, BL2_STRING, TPM_PCR_0 },		/* Reserved for BL2 */
 	{ INVALID_ID, NULL, (unsigned int)(-1) }	/* Terminator */
 };
 
@@ -140,21 +147,21 @@ static int add_event2(const uint8_t *hash, const image_data_t *image_ptr)
 	((event2_header_t *)ptr)->pcr_index = image_ptr->pcr;
 
 	/* TCG_PCR_EVENT2.EventType */
-	((event2_header_t *)ptr)->event_type = EV_POST_CODE;
+	((event2_header_t *)ptr)->event_type = TPM_LOG_EV_POST_CODE;
 
 	/* TCG_PCR_EVENT2.Digests.Count */
 	ptr = (uint8_t *)ptr + offsetof(event2_header_t, digests);
-	((tpml_digest_values *)ptr)->count = HASH_ALG_COUNT;
+	((tpml_digest_values_t *)ptr)->count = HASH_ALG_COUNT;
 
 	/* TCG_PCR_EVENT2.Digests[] */
 	ptr = (uint8_t *)((uintptr_t)ptr +
-			offsetof(tpml_digest_values, digests));
+			offsetof(tpml_digest_values_t, digests));
 
 	/* TCG_PCR_EVENT2.Digests[].AlgorithmId */
-	((tpmt_ha *)ptr)->algorithm_id = TPM_ALG_ID;
+	((tpmt_ha_t *)ptr)->algorithm_id = TPM_ALG_ID;
 
 	/* TCG_PCR_EVENT2.Digests[].Digest[] */
-	ptr = (uint8_t *)((uintptr_t)ptr + offsetof(tpmt_ha, digest));
+	ptr = (uint8_t *)((uintptr_t)ptr + offsetof(tpmt_ha_t, digest));
 
 	/* Check for space in Event Log buffer */
 	if (((uintptr_t)ptr + TCG_DIGEST_SIZE) > EVENT_LOG_END) {
@@ -210,17 +217,17 @@ void event_log_init(void)
 	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(id_event_header));
 
 	/* TCG_EfiSpecIdEventAlgorithmSize structure */
-	((id_event_algorithm_size_t *)ptr)->algorithm_id = TPM_ALG_ID;
-	((id_event_algorithm_size_t *)ptr)->digest_size = TCG_DIGEST_SIZE;
-	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(id_event_algorithm_size_t));
+	((id_event_alg_info_t *)ptr)->algorithm_id = TPM_ALG_ID;
+	((id_event_alg_info_t *)ptr)->digest_size = TCG_DIGEST_SIZE;
+	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(id_event_alg_info_t));
 
 	/*
 	 * TCG_EfiSpecIDEventStruct.vendorInfoSize
 	 * No vendor data
 	 */
-	((id_event_struct_data_t *)ptr)->vendor_info_size = 0;
+	((id_event_vendor_data_t *)ptr)->vendor_info_size = 0;
 	ptr = (uint8_t *)((uintptr_t)ptr +
-			offsetof(id_event_struct_data_t, vendor_info));
+			offsetof(id_event_vendor_data_t, vendor_info));
 	if ((uintptr_t)ptr != ((uintptr_t)event_log + ID_EVENT_SIZE)) {
 		panic();
 	}
@@ -240,16 +247,16 @@ void event_log_init(void)
 	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(locality_event_header));
 
 	/* TCG_PCR_EVENT2.Digests[].AlgorithmId */
-	((tpmt_ha *)ptr)->algorithm_id = TPM_ALG_ID;
+	((tpmt_ha_t *)ptr)->algorithm_id = TPM_ALG_ID;
 
 	/* TCG_PCR_EVENT2.Digests[].Digest[] */
-	(void)memset(&((tpmt_ha *)ptr)->digest, 0, TPM_ALG_ID);
+	(void)memset(&((tpmt_ha_t *)ptr)->digest, 0, TPM_ALG_ID);
 	ptr = (uint8_t *)((uintptr_t)ptr +
-			offsetof(tpmt_ha, digest) + TCG_DIGEST_SIZE);
+			offsetof(tpmt_ha_t, digest) + TCG_DIGEST_SIZE);
 
 	/* TCG_PCR_EVENT2.EventSize */
 	((event2_data_t *)ptr)->event_size =
-		(uint32_t)sizeof(startup_locality_event_t);
+		(uint32_t)sizeof(startup_locality_event_data_t);
 	ptr = (uint8_t *)((uintptr_t)ptr + offsetof(event2_data_t, event));
 
 	/* TCG_EfiStartupLocalityEvent.Signature */
@@ -260,8 +267,8 @@ void event_log_init(void)
 	 * TCG_EfiStartupLocalityEvent.StartupLocality = 0:
 	 * the platform's boot firmware
 	 */
-	((startup_locality_event_t *)ptr)->startup_locality = 0U;
-	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(startup_locality_event_t));
+	((startup_locality_event_data_t *)ptr)->startup_locality = 0U;
+	ptr = (uint8_t *)((uintptr_t)ptr + sizeof(startup_locality_event_data_t));
 	if ((uintptr_t)ptr != ((uintptr_t)start_ptr + LOC_EVENT_SIZE)) {
 		panic();
 	}

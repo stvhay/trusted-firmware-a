@@ -63,6 +63,7 @@ int plat_get_image_source(unsigned int image_id,
 uintptr_t plat_get_ns_image_entrypoint(void);
 unsigned int plat_my_core_pos(void);
 int plat_core_pos_by_mpidr(u_register_t mpidr);
+unsigned int plat_is_my_cpu_primary(void);
 int plat_get_mbedtls_heap(void **heap_addr, size_t *heap_size);
 
 #if STACK_PROTECTOR_ENABLED

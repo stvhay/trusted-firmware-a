@@ -9,6 +9,13 @@
 
 #include <common/debug.h>
 #include <drivers/measured_boot/event_log.h>
+#include <lib/tpm/tpm_log.h>
+
+/*
+ * TODO: Remove dependency on private header, depend solely on
+ * lib/tpm/tpm_log.h instead.
+ */
+#include "../../lib/tpm/tpm_log_private.h"
 
 #if LOG_LEVEL >= EVENT_LOG_LEVEL
 
@@ -23,8 +30,8 @@ static void id_event_print(uint8_t **log_addr, size_t *log_size)
 	unsigned int i;
 	uint8_t info_size, *info_size_ptr;
 	void *ptr = *log_addr;
-	id_event_headers_t *event = (id_event_headers_t *)ptr;
-	id_event_algorithm_size_t *alg_ptr;
+	id_event_container_t *event = (id_event_container_t *)ptr;
+	id_event_alg_info_t *alg_ptr;
 	uint32_t event_size, number_of_algorithms;
 	size_t digest_len;
 #if ENABLE_ASSERTIONS
@@ -32,22 +39,22 @@ static void id_event_print(uint8_t **log_addr, size_t *log_size)
 	bool valid = true;
 #endif
 
-	assert(*log_size >= sizeof(id_event_headers_t));
+	assert(*log_size >= sizeof(id_event_container_t));
 
 	/* The fields of the event log header are defined to be PCRIndex of 0,
 	 * EventType of EV_NO_ACTION, Digest of 20 bytes of 0, and
 	 * Event content defined as TCG_EfiSpecIDEventStruct.
 	 */
 	LOG_EVENT("TCG_EfiSpecIDEvent:\n");
-	LOG_EVENT("  PCRIndex           : %u\n", event->header.pcr_index);
-	assert(event->header.pcr_index == (uint32_t)PCR_0);
+	LOG_EVENT("  PCRIndex           : %u\n", event->container.pcr_index);
+	assert(event->container.pcr_index == (uint32_t)TPM_PCR_0);
 
-	LOG_EVENT("  EventType          : %u\n", event->header.event_type);
-	assert(event->header.event_type == EV_NO_ACTION);
+	LOG_EVENT("  EventType          : %u\n", event->container.event_type);
+	assert(event->container.event_type == TPM_LOG_EV_NO_ACTION);
 
 	LOG_EVENT("  Digest             :");
-	for (i = 0U; i < sizeof(event->header.digest); ++i) {
-		uint8_t val = event->header.digest[i];
+	for (i = 0U; i < sizeof(event->container.digest); ++i) {
+		uint8_t val = event->container.digest[i];
 
 		(void)printf(" %02x", val);
 		if ((i & U(0xF)) == 0U) {
@@ -67,29 +74,29 @@ static void id_event_print(uint8_t **log_addr, size_t *log_size)
 	assert(valid);
 
 	/* EventSize */
-	event_size = event->header.event_size;
+	event_size = event->container.event_size;
 	LOG_EVENT("  EventSize          : %u\n", event_size);
 
 	LOG_EVENT("  Signature          : %s\n",
-			event->struct_header.signature);
+			event->id_event_misc_data.signature);
 	LOG_EVENT("  PlatformClass      : %u\n",
-			event->struct_header.platform_class);
+			event->id_event_misc_data.platform_class);
 	LOG_EVENT("  SpecVersion        : %u.%u.%u\n",
-			event->struct_header.spec_version_major,
-			event->struct_header.spec_version_minor,
-			event->struct_header.spec_errata);
+			event->id_event_misc_data.spec_version_major,
+			event->id_event_misc_data.spec_version_minor,
+			event->id_event_misc_data.spec_errata);
 	LOG_EVENT("  UintnSize          : %u\n",
-			event->struct_header.uintn_size);
+			event->id_event_misc_data.uintn_size);
 
 	/* NumberOfAlgorithms */
-	number_of_algorithms = event->struct_header.number_of_algorithms;
+	number_of_algorithms = event->id_event_misc_data.number_of_algorithms;
 	LOG_EVENT("  NumberOfAlgorithms : %u\n", number_of_algorithms);
 
 	/* Address of DigestSizes[] */
-	alg_ptr = event->struct_header.digest_size;
+	alg_ptr = event->id_event_misc_data.digest_sizes;
 
 	/* Size of DigestSizes[] */
-	digest_len = number_of_algorithms * sizeof(id_event_algorithm_size_t);
+	digest_len = number_of_algorithms * sizeof(id_event_alg_info_t);
 	assert(((uintptr_t)alg_ptr + digest_len) <= (uintptr_t)end_ptr);
 
 	LOG_EVENT("  DigestSizes        :\n");
@@ -128,7 +135,7 @@ static void id_event_print(uint8_t **log_addr, size_t *log_size)
 	assert(((uintptr_t)info_size_ptr + info_size) <= (uintptr_t)end_ptr);
 
 	/* Check EventSize */
-	assert(event_size == (sizeof(id_event_struct_t) +
+	assert(event_size == (sizeof(__id_event_t) +
 				digest_len + info_size));
 	if (info_size != 0U) {
 		LOG_EVENT("  VendorInfo         :");
@@ -175,10 +182,10 @@ static void event2_print(uint8_t **log_addr, size_t *log_size)
 	for (unsigned int i = 0U; i < count; ++i) {
 		/* Check AlgorithmId address */
 		assert(((uintptr_t)ptr +
-			offsetof(tpmt_ha, digest)) <= (uintptr_t)end_ptr);
+			offsetof(tpmt_ha_t, digest)) <= (uintptr_t)end_ptr);
 
 		LOG_EVENT("    #%u AlgorithmId   : SHA", i);
-		switch (((tpmt_ha *)ptr)->algorithm_id) {
+		switch (((tpmt_ha_t *)ptr)->algorithm_id) {
 		case TPM_ALG_SHA256:
 			sha_size = SHA256_DIGEST_SIZE;
 			(void)printf("256\n");
@@ -194,12 +201,12 @@ static void event2_print(uint8_t **log_addr, size_t *log_size)
 		default:
 			(void)printf("?\n");
 			ERROR("Algorithm 0x%x not found\n",
-				((tpmt_ha *)ptr)->algorithm_id);
+				((tpmt_ha_t *)ptr)->algorithm_id);
 			panic();
 		}
 
 		/* End of Digest[] */
-		ptr = (uint8_t *)((uintptr_t)ptr + offsetof(tpmt_ha, digest));
+		ptr = (uint8_t *)((uintptr_t)ptr + offsetof(tpmt_ha_t, digest));
 		assert(((uintptr_t)ptr + sha_size) <= (uintptr_t)end_ptr);
 
 		/* Total size of all digests */
@@ -229,12 +236,12 @@ static void event2_print(uint8_t **log_addr, size_t *log_size)
 	/* End of TCG_PCR_EVENT2.Event[EventSize] */
 	assert(((uintptr_t)ptr + event_size) <= (uintptr_t)end_ptr);
 
-	if ((event_size == sizeof(startup_locality_event_t)) &&
+	if ((event_size == sizeof(startup_locality_event_data_t)) &&
 	     (strcmp((const char *)ptr, TCG_STARTUP_LOCALITY_SIGNATURE) == 0)) {
 		LOG_EVENT("  Signature          : %s\n",
-			((startup_locality_event_t *)ptr)->signature);
+			((startup_locality_event_data_t *)ptr)->signature);
 		LOG_EVENT("  StartupLocality    : %u\n",
-			((startup_locality_event_t *)ptr)->startup_locality);
+			((startup_locality_event_data_t *)ptr)->startup_locality);
 	} else {
 		LOG_EVENT("  Event              : %s\n", (uint8_t *)ptr);
 	}
