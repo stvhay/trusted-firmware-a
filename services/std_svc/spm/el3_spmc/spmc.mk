@@ -13,7 +13,9 @@ SPMC_SOURCES	:=	$(addprefix services/std_svc/spm/el3_spmc/,	\
 			spmc_setup.c				\
 			logical_sp.c				\
 			spmc_pm.c				\
-			spmc_shared_mem.c)
+			spmc_shared_mem.c			\
+			spmc_ffa_notifs.c			\
+			)
 
 # Specify platform specific logical partition implementation.
 SPMC_LP_SOURCES  := $(addprefix ${PLAT_DIR}/, \

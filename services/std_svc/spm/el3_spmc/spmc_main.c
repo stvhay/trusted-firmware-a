@@ -26,6 +26,7 @@
 #include <services/spmc_svc.h>
 #include <services/spmd_svc.h>
 #include "spmc.h"
+#include "spmc_ffa_notifs.h"
 #include "spmc_shared_mem.h"
 
 #include <platform_def.h>
@@ -1843,6 +1844,50 @@ uint64_t spmc_smc_handler(uint32_t smc_fid,
 			  void *handle,
 			  uint64_t flags)
 {
+	/*
+	 * First, dispatch ABIs facing only one of the Normal World or the Secure
+	 * World exclusively.
+	 *
+	 * Note: currently all call paths to this function already check whether
+	 * the SMC comes from the Normal World or the Secure World.  Therefore this
+	 * function could be split into two: one that represents the Normal World
+	 * interface and one that represents the Secure World interface, and have
+	 * the right one called from the outset.
+	 */
+	if (secure_origin) {
+		switch (smc_fid) {
+		case FFA_NOTIFICATION_SET:
+			return spmc_ffa_notification_set(x1, x2, x3, x4, handle);
+
+		default:
+			break;
+		}
+	} else {
+		switch (smc_fid) {
+		case FFA_NOTIFICATION_BITMAP_CREATE:
+			return spmc_ffa_notification_bitmap_create(x1, x2, handle);
+
+		case FFA_NOTIFICATION_BITMAP_DESTROY:
+			return spmc_ffa_notification_bitmap_destroy(x1, handle);
+
+		case FFA_NOTIFICATION_BIND:
+			return spmc_ffa_notification_bind(x1, x2, x3, x4, handle);
+
+		case FFA_NOTIFICATION_UNBIND:
+			return spmc_ffa_notification_unbind(x1, x3, x4, handle);
+
+		/* case FFA_NOTIFICATION_INFO_GET_SMC32: */
+		case FFA_NOTIFICATION_INFO_GET_SMC64:
+			return spmc_ffa_notification_info_get(handle);
+
+		case FFA_NOTIFICATION_GET:
+			return spmc_ffa_notification_get(x1, x2, handle);
+
+		default:
+			break;
+		}
+	}
+
 	switch (smc_fid) {
 
 	case FFA_VERSION:
