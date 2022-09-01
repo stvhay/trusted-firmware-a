@@ -1808,6 +1808,9 @@ int32_t spmc_setup(void)
 	}
 	memset(spmc_shmem_obj_state.data, 0, spmc_shmem_obj_state.data_size);
 
+	/* Initialize the FF-A Notifications module. */
+	spmc_ffa_notifications_init_per_pe();
+
 	/* Setup logical SPs. */
 	ret = logical_sp_init();
 	if (ret != 0) {

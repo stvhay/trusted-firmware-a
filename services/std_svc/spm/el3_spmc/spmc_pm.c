@@ -13,6 +13,7 @@
 #include <plat/common/platform.h>
 #include <services/ffa_svc.h>
 #include "spmc.h"
+#include "spmc_ffa_notifs.h"
 
 #include <platform_def.h>
 
@@ -45,6 +46,9 @@ static void spmc_cpu_on_finish_handler(u_register_t unused)
 	unsigned int linear_id = plat_my_core_pos();
 	entry_point_info_t sec_ec_ep_info = {0};
 	uint64_t rc;
+
+	/* Initialize the FF-A Notifications module. */
+	spmc_ffa_notifications_init_per_pe();
 
 	/* Sanity check for a NULL pointer dereference. */
 	assert(sp != NULL);
