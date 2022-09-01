@@ -1053,7 +1053,23 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 
 	/* Check if a Feature ID was requested. */
 	if ((function_id & FFA_FEATURES_BIT31_MASK) == 0U) {
-		/* We currently don't support any additional features. */
+		uint32_t feat_id = (uint32_t)x1;
+
+		if (secure_origin) {
+			switch (feat_id) {
+			default:
+				break;
+			}
+		} else {
+			switch (feat_id) {
+			case FFA_FEAT_SCHED_RECEIVER_INT:
+				return spmc_ffa_features_schedule_receiver_int(handle);
+
+			default:
+				break;
+			}
+		}
+
 		return spmc_ffa_error_return(handle, FFA_ERROR_NOT_SUPPORTED);
 	}
 
@@ -1115,6 +1131,7 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 	case FFA_MSG_SEND_DIRECT_RESP_SMC64:
 	case FFA_MEM_RELINQUISH:
 	case FFA_MSG_WAIT:
+	case FFA_NOTIFICATION_SET:
 
 		if (!secure_origin) {
 			return spmc_ffa_error_return(handle,
@@ -1130,6 +1147,13 @@ static uint64_t ffa_features_handler(uint32_t smc_fid,
 	case FFA_MEM_LEND_SMC64:
 	case FFA_MEM_RECLAIM:
 	case FFA_MEM_FRAG_RX:
+	case FFA_NOTIFICATION_BITMAP_CREATE:
+	case FFA_NOTIFICATION_BITMAP_DESTROY:
+	case FFA_NOTIFICATION_BIND:
+	case FFA_NOTIFICATION_UNBIND:
+	/* case FFA_NOTIFICATION_INFO_GET_SMC32: */
+	case FFA_NOTIFICATION_INFO_GET_SMC64:
+	case FFA_NOTIFICATION_GET:
 
 		if (secure_origin) {
 			return spmc_ffa_error_return(handle,
