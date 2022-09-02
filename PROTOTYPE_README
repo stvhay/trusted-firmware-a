@@ -1,0 +1,48 @@
+--------------------------------------------------------------------------------
+Disclaimer: This branch contains FF-A Notifications book-keeping and signalling
+prototype code that is demonstrative and a proof of concept.  It is designed to
+allow prototyping of new features and any productization paths if taken forward
+would be delivered through the master branch.
+--------------------------------------------------------------------------------
+
+
+FF-A Notifications are an asynchronous communication mechanism designed for
+reliability.  Since its primitives are merely abstractions of shared state, the
+mechanism is not subject to capacity limits in the same way messaging is, but on
+its own it is not suitable for conveying arbitrary data.
+
+Release notes
+-------------
+
+This prototype supports SP -> VM notifications as per FF-A specification v1.1
+EAC0.  Namely, this prototype supports the following Secure World ABIs:
+- FFA_NOTIFICATION_SET;
+
+and the following Normal World ABIs:
+- FFA_NOTIFICATION_BITMAP_CREATE;
+- FFA_NOTIFICATION_BITMAP_DESTROY;
+- FFA_NOTIFICATION_BIND;
+- FFA_NOTIFICATION_UNBIND;
+- FFA_NOTIFICATION_INFO_GET;
+- FFA_NOTIFICATION_GET.
+
+The prototype could be adapted to also support VM -> SP and Framework notifica-
+tions.
+
+The notifications module has been tested on a system emulator (QEMU) in a multi-
+core configuration of a single SP communicating with a single VM.  Multi-SPs or
+multi-VMs configurations have not been tested.
+
+The code that is the link between the EL3 SPMC and the notifications module is
+untested.
+
+The prototype has not been tested on hardware targets.
+
+
+Getting started
+---------------
+
+For instructions on how to build and run the EL3 SPMC as part of a software
+stack for the FVP platform, see the 'PROTOTYPE_README' file on branch
+'topics/ffa_el3_spmc' as well as standard documentation on this branch
+('secure-partition-manager.rst').
