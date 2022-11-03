@@ -450,6 +450,7 @@ ifeq ($(findstring ld.lld,$(notdir $(LD))),)
 TF_LDFLAGS		+=	$(TF_LDFLAGS_$(ARCH))
 endif
 endif
+TF_LDFLAGS		+=	--no-warn-rwx-segments
 
 DTC_FLAGS		+=	-I dts -O dtb
 DTC_CPPFLAGS		+=	-P -nostdinc -Iinclude -Ifdts -undef \
